@@ -44,14 +44,15 @@ class RestHandler(RestClient):
              calltimeout=consts.SOCKET_TIMEOUT):
         try:
             res = self.call_with_token(url, data, method, calltimeout)
-            if (res.status_code == consts.ERROR_SESSION_INVALID_CODE
-                    or res.status_code ==
-                    consts.ERROR_SESSION_IS_BEING_USED_CODE):
+            if res.status_code in [
+                consts.ERROR_SESSION_INVALID_CODE,
+                consts.ERROR_SESSION_IS_BEING_USED_CODE,
+            ]:
                 LOG.error("Failed to get token=={0}=={1},get token again"
                           .format(res.status_code, res.text))
                 # if method is logout,return immediately
                 if method == 'DELETE' and RestHandler. \
-                        LOGOUT_URL in url:
+                            LOGOUT_URL in url:
                     return res
                 if self.get_token():
                     res = self.call_with_token(url, data, method, calltimeout)
@@ -63,7 +64,7 @@ class RestHandler(RestClient):
             return res
 
         except Exception as e:
-            err_msg = "Get RestHandler.call failed: %s" % (six.text_type(e))
+            err_msg = f"Get RestHandler.call failed: {six.text_type(e)}"
             LOG.error(err_msg)
             raise e
 
@@ -81,30 +82,25 @@ class RestHandler(RestClient):
         return res
 
     def get_rest_info(self, url, timeout=consts.SOCKET_TIMEOUT, data=None):
-        result_json = None
         if self.session and url != RestHandler.COMM_URL:
             auth_key = self.session.headers.get(RestHandler.AUTH_KEY, None)
             if auth_key is None:
                 self.get_token()
         res = self.call(url, data, 'GET', timeout)
-        if res.status_code == 200:
-            result_json = res.json()
-        return result_json
+        return res.json() if res.status_code == 200 else None
 
     def get_token(self):
         try:
             succeed = False
             if self.san_address:
-                url = '%s/%s/sessions' % \
-                      (RestHandler.COMM_URL,
-                       self.storage_device_id)
+                url = f'{RestHandler.COMM_URL}/{self.storage_device_id}/sessions'
                 data = {}
 
                 with self.session_lock:
                     if self.session is None:
                         self.init_http_head()
                     self.session.auth = \
-                        requests.auth.HTTPBasicAuth(
+                            requests.auth.HTTPBasicAuth(
                             self.rest_username,
                             cryptor.decode(self.rest_password))
                     res = self.call_with_token(url, data, 'POST', 30)
@@ -113,7 +109,7 @@ class RestHandler(RestClient):
                         result = res.json()
                         self.session_id = cryptor.encode(
                             result.get('sessionId'))
-                        access_session = 'Session %s' % result.get('token')
+                        access_session = f"Session {result.get('token')}"
                         self.session.headers[
                             RestHandler.AUTH_KEY] = cryptor.encode(
                             access_session)
@@ -149,10 +145,8 @@ class RestHandler(RestClient):
         try:
             url = RestHandler.LOGOUT_URL
             if self.session_id is not None:
-                url = '%s/%s/sessions/%s' % \
-                      (RestHandler.COMM_URL,
-                       self.storage_device_id,
-                       cryptor.decode(self.session_id))
+                url = f'{RestHandler.COMM_URL}/{self.storage_device_id}/sessions/{cryptor.decode(self.session_id)}'
+
                 if self.san_address:
                     self.call(url, method='DELETE')
                     url = None
@@ -164,7 +158,7 @@ class RestHandler(RestClient):
             else:
                 LOG.error('logout error:session id not found')
         except Exception as err:
-            LOG.error('logout error:{}'.format(err))
+            LOG.error(f'logout error:{err}')
             raise exception.StorageBackendException(
                 reason='Failed to Logout from restful')
 
@@ -179,7 +173,7 @@ class RestHandler(RestClient):
                 succeed = True
                 if system.get('model') in consts.SUPPORTED_VSP_SERIES:
                     if system.get('ctl1Ip') == self.rest_host or \
-                            system.get('ctl2Ip') == self.rest_host:
+                                system.get('ctl2Ip') == self.rest_host:
                         self.storage_device_id = system.get('storageDeviceId')
                         self.device_model = system.get('model')
                         self.serial_number = system.get('serialNumber')
@@ -197,60 +191,40 @@ class RestHandler(RestClient):
             raise e
 
     def get_firmware_version(self):
-        url = '%s/%s' % \
-              (RestHandler.COMM_URL, self.storage_device_id)
+        url = f'{RestHandler.COMM_URL}/{self.storage_device_id}'
         result_json = self.get_rest_info(url)
-        if result_json is None:
-            return None
-        firmware_version = result_json.get('dkcMicroVersion')
-
-        return firmware_version
+        return None if result_json is None else result_json.get('dkcMicroVersion')
 
     def get_capacity(self):
-        url = '%s/%s/total-capacities/instance' % \
-              (RestHandler.COMM_URL, self.storage_device_id)
-        result_json = self.get_rest_info(url)
-        return result_json
+        url = f'{RestHandler.COMM_URL}/{self.storage_device_id}/total-capacities/instance'
+
+        return self.get_rest_info(url)
 
     def get_all_pools(self):
-        url = '%s/%s/pools' % \
-              (RestHandler.COMM_URL, self.storage_device_id)
-        result_json = self.get_rest_info(url)
-        return result_json
+        url = f'{RestHandler.COMM_URL}/{self.storage_device_id}/pools'
+        return self.get_rest_info(url)
 
     def get_volumes(self, head_id,
                     max_number=consts.LDEV_NUMBER_OF_PER_REQUEST):
-        url = '%s/%s/ldevs?headLdevId=%s&count=%s' % \
-              (RestHandler.COMM_URL, self.storage_device_id, head_id,
-               max_number)
-        result_json = self.get_rest_info(url)
-        return result_json
+        url = f'{RestHandler.COMM_URL}/{self.storage_device_id}/ldevs?headLdevId={head_id}&count={max_number}'
+
+        return self.get_rest_info(url)
 
     def get_system_info(self):
-        result_json = self.get_rest_info(RestHandler.COMM_URL, timeout=10)
-
-        return result_json
+        return self.get_rest_info(RestHandler.COMM_URL, timeout=10)
 
     def get_controllers(self):
-        url = '%s/%s/components/instance' % \
-              (RestHandler.COMM_URL, self.storage_device_id)
-        result_json = self.get_rest_info(url)
-        return result_json
+        url = f'{RestHandler.COMM_URL}/{self.storage_device_id}/components/instance'
+        return self.get_rest_info(url)
 
     def get_disks(self):
-        url = '%s/%s/drives' % \
-              (RestHandler.COMM_URL, self.storage_device_id)
-        result_json = self.get_rest_info(url)
-        return result_json
+        url = f'{RestHandler.COMM_URL}/{self.storage_device_id}/drives'
+        return self.get_rest_info(url)
 
     def get_all_ports(self):
-        url = '%s/%s/ports' % \
-              (RestHandler.COMM_URL, self.storage_device_id)
-        result_json = self.get_rest_info(url)
-        return result_json
+        url = f'{RestHandler.COMM_URL}/{self.storage_device_id}/ports'
+        return self.get_rest_info(url)
 
     def get_detail_ports(self, port_id):
-        url = '%s/%s/ports/%s' % \
-              (RestHandler.COMM_URL, self.storage_device_id, port_id)
-        result_json = self.get_rest_info(url)
-        return result_json
+        url = f'{RestHandler.COMM_URL}/{self.storage_device_id}/ports/{port_id}'
+        return self.get_rest_info(url)

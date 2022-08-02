@@ -40,8 +40,7 @@ class AlertHandler(object):
     def parse_alert(context, alert):
         try:
             description = alert.get(AlertHandler.OID_SYMPTOMTEXT)
-            alert_model = dict()
-            alert_model['alert_id'] = alert.get(AlertHandler.OID_COMPONENT)
+            alert_model = {'alert_id': alert.get(AlertHandler.OID_COMPONENT)}
             alert_model['alert_name'] = description
             alert_model['severity'] = AlertHandler.TRAP_LEVEL_MAP.get(
                 alert.get(AlertHandler.OID_SEVERITY),
@@ -53,7 +52,7 @@ class AlertHandler(object):
             alert_model['resource_type'] = constants.DEFAULT_RESOURCE_TYPE
             alert_model['location'] = ''
             alert_model['match_key'] = hashlib.md5(description.encode()). \
-                hexdigest()
+                    hexdigest()
 
             return alert_model
         except Exception as e:

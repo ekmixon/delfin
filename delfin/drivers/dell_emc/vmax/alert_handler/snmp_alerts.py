@@ -58,14 +58,11 @@ class AlertHandler(object):
         # Check for mandatory alert attributes
         for attr in AlertHandler._mandatory_alert_attributes:
             if not alert.get(attr):
-                msg = "Mandatory information %s missing in alert message. " \
-                      % attr
+                msg = f"Mandatory information {attr} missing in alert message. "
                 raise exception.InvalidInput(msg)
 
-        alert_model = {}
+        alert_model = {'alert_id': alert['emcAsyncEventCode']}
 
-        # Fill alarm id and fill alarm_name with corresponding mapping names
-        alert_model['alert_id'] = alert['emcAsyncEventCode']
         alert_model['alert_name'] = alert_mapper.alarm_id_name_mapping.get(
             alert_model['alert_id'], alert_model['alert_id'])
 
@@ -93,13 +90,13 @@ class AlertHandler(object):
         component_type = alert_mapper.component_type_mapping.get(
             alert.get('emcAsyncEventComponentType'), "")
         alert_model['location'] = 'Array id=' \
-                                  + alert['connUnitName'] \
-                                  + ',Component type=' \
-                                  + component_type \
-                                  + ',Component name=' \
-                                  + alert['emcAsyncEventComponentName'] \
-                                  + ',Event source=' \
-                                  + alert['emcAsyncEventSource']
+                                      + alert['connUnitName'] \
+                                      + ',Component type=' \
+                                      + component_type \
+                                      + ',Component name=' \
+                                      + alert['emcAsyncEventComponentName'] \
+                                      + ',Event source=' \
+                                      + alert['emcAsyncEventSource']
 
         return alert_model
 

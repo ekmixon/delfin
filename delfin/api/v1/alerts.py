@@ -38,7 +38,7 @@ class AlertController(wsgi.Controller):
         ctx = req.environ['delfin.context']
 
         query_para = {}
-        query_para.update(req.GET)
+        query_para |= req.GET
 
         try:
             begin_time = None
@@ -51,7 +51,7 @@ class AlertController(wsgi.Controller):
                 end_time = int(query_para.get('end_time'))
         except Exception:
             msg = "begin_time and end_time should be integer values in " \
-                  "milliseconds."
+                      "milliseconds."
             raise exception.InvalidInput(msg)
 
         # When both begin_time and end_time are provided, end_time should

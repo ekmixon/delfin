@@ -50,100 +50,81 @@ class RestHandler(RestClient):
 
     def get_rest_info(self, url, data=None, method='GET'):
         """Return dict result of the url response."""
-        result_json = None
         res = self.do_call(url, data, method)
-        if res.status_code == 200:
-            result_json = res.json().get('response')
-        return result_json
+        return res.json().get('response') if res.status_code == 200 else None
 
     def get_virtual_volume_by_name_resp(self, cluster_name,
                                         virtual_volume_name):
-        url = '%s/clusters/%s/virtual-volumes/%s' % \
-              (consts.BASE_CONTEXT, cluster_name, virtual_volume_name)
-        response = self.get_rest_info(url)
-        return response
+        url = f'{consts.BASE_CONTEXT}/clusters/{cluster_name}/virtual-volumes/{virtual_volume_name}'
+
+        return self.get_rest_info(url)
 
     def get_virtual_volume_resp(self, cluster_name):
-        url = '%s/clusters/%s/virtual-volumes' % (
-            consts.BASE_CONTEXT, cluster_name)
-        response = self.get_rest_info(url)
-        return response
+        url = f'{consts.BASE_CONTEXT}/clusters/{cluster_name}/virtual-volumes'
+        return self.get_rest_info(url)
 
     def get_cluster_resp(self):
-        uri = '%s/clusters' % consts.BASE_CONTEXT
-        response = self.get_rest_info(uri)
-        return response
+        uri = f'{consts.BASE_CONTEXT}/clusters'
+        return self.get_rest_info(uri)
 
     def get_devcie_resp(self, cluster_name):
-        url = '%s/clusters/%s/devices' % (consts.BASE_CONTEXT, cluster_name)
-        response = self.get_rest_info(url)
-        return response
+        url = f'{consts.BASE_CONTEXT}/clusters/{cluster_name}/devices'
+        return self.get_rest_info(url)
 
     def get_device_by_name_resp(self, cluster_name, device_name):
-        url = '%s/clusters/%s/devices/%s' % (
-            consts.BASE_CONTEXT, cluster_name, device_name)
-        response = self.get_rest_info(url)
-        return response
+        url = f'{consts.BASE_CONTEXT}/clusters/{cluster_name}/devices/{device_name}'
+        return self.get_rest_info(url)
 
     def get_health_check_resp(self):
-        url = '%s/health-check' % consts.BASE_CONTEXT
+        url = f'{consts.BASE_CONTEXT}/health-check'
         data = {"args": "-l"}
-        response = self.get_rest_info(url, data, method='POST')
-        return response
+        return self.get_rest_info(url, data, method='POST')
 
     def get_cluster_by_name_resp(self, cluster_name):
-        url = '%s/clusters/%s' % (consts.BASE_CONTEXT, cluster_name)
-        response = self.get_rest_info(url)
-        return response
+        url = f'{consts.BASE_CONTEXT}/clusters/{cluster_name}'
+        return self.get_rest_info(url)
 
     def get_storage_volume_summary_resp(self, cluster_name):
-        url = '%s/storage-volume+summary' % consts.BASE_CONTEXT
-        args = '--clusters %s' % cluster_name
+        url = f'{consts.BASE_CONTEXT}/storage-volume+summary'
+        args = f'--clusters {cluster_name}'
         data = {"args": args}
-        response = self.get_rest_info(url, data, method='POST')
-        return response
+        return self.get_rest_info(url, data, method='POST')
 
     def get_device_summary_resp(self, cluster_name):
-        url = '%s/local-device+summary' % consts.BASE_CONTEXT
-        args = '--clusters %s' % cluster_name
+        url = f'{consts.BASE_CONTEXT}/local-device+summary'
+        args = f'--clusters {cluster_name}'
         data = {"args": args}
-        response = self.get_rest_info(url, data, method='POST')
-        return response
+        return self.get_rest_info(url, data, method='POST')
 
     def get_virtual_volume_summary_resp(self, cluster_name):
-        url = '%s/virtual-volume+summary' % consts.BASE_CONTEXT
-        args = '--clusters %s' % cluster_name
+        url = f'{consts.BASE_CONTEXT}/virtual-volume+summary'
+        args = f'--clusters {cluster_name}'
         data = {"args": args}
-        response = self.get_rest_info(url, data, method='POST')
-        return response
+        return self.get_rest_info(url, data, method='POST')
 
     def logout(self):
         try:
             if self.session:
                 self.session.close()
         except Exception as e:
-            err_msg = "Logout error: %s" % (six.text_type(e))
+            err_msg = f"Logout error: {six.text_type(e)}"
             LOG.error(err_msg)
             raise e
 
     def get_engine_director_resp(self):
-        url = '%s/engines/*/directors/*' % consts.BASE_CONTEXT
-        response = self.get_rest_info(url)
-        return response
+        url = f'{consts.BASE_CONTEXT}/engines/*/directors/*'
+        return self.get_rest_info(url)
 
     def get_version_verbose(self):
-        url = '%s/version' % consts.BASE_CONTEXT
+        url = f'{consts.BASE_CONTEXT}/version'
         args = '-a --verbose'
         data = {"args": args}
-        response = self.get_rest_info(url, data, method='POST')
-        return response
+        return self.get_rest_info(url, data, method='POST')
 
     def get_cluster_export_port_resp(self):
-        url = '%s/clusters/*/exports/ports/*' % consts.BASE_CONTEXT
-        response = self.get_rest_info(url)
-        return response
+        url = f'{consts.BASE_CONTEXT}/clusters/*/exports/ports/*'
+        return self.get_rest_info(url)
 
     def get_engine_director_hardware_port_resp(self):
-        url = '%s/engines/*/directors/*/hardware/ports/*' % consts.BASE_CONTEXT
-        response = self.get_rest_info(url)
-        return response
+        url = f'{consts.BASE_CONTEXT}/engines/*/directors/*/hardware/ports/*'
+        return self.get_rest_info(url)

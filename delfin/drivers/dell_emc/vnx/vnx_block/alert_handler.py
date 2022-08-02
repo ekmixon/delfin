@@ -28,9 +28,12 @@ class AlertHandler(object):
     @staticmethod
     def parse_alert(alert):
         try:
-            alert_model = dict()
-            alert_model['alert_id'] = AlertHandler.check_event_code(
-                alert.get(consts.OID_MESSAGECODE))
+            alert_model = {
+                'alert_id': AlertHandler.check_event_code(
+                    alert.get(consts.OID_MESSAGECODE)
+                )
+            }
+
             alert_model['alert_name'] = alert.get(consts.OID_DETAILS)
             alert_model['severity'] = consts.TRAP_LEVEL_MAP.get(
                 alert.get(consts.OID_SEVERITY),
@@ -52,5 +55,5 @@ class AlertHandler(object):
     @staticmethod
     def check_event_code(event_code):
         if '0x' not in event_code:
-            event_code = '0x%s' % event_code
+            event_code = f'0x{event_code}'
         return event_code

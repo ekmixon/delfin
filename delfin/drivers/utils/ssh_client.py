@@ -48,8 +48,7 @@ class SSHClient(object):
         if self.ssh_pub_key is None:
             self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         else:
-            host_key = '%s %s %s' % \
-                       (self.ssh_host, self.ssh_pub_key_type, self.ssh_pub_key)
+            host_key = f'{self.ssh_host} {self.ssh_pub_key_type} {self.ssh_pub_key}'
             self.set_host_key(host_key)
 
         self.ssh.connect(hostname=self.ssh_host, port=self.ssh_port,
@@ -81,12 +80,11 @@ class SSHClient(object):
     def exec_command(self, command_str):
         result = None
         try:
-            if command_str is not None:
-                if self.ssh is not None:
-                    stdin, stdout, stderr = self.ssh.exec_command(command_str)
-                    res, err = stdout.read(), stderr.read()
-                    re = res if res else err
-                    result = re.decode()
+            if command_str is not None and self.ssh is not None:
+                stdin, stdout, stderr = self.ssh.exec_command(command_str)
+                res, err = stdout.read(), stderr.read()
+                re = res or err
+                result = re.decode()
         except Exception as e:
             LOG.error(e)
             result = e
@@ -109,14 +107,14 @@ class SSHClient(object):
                 self.connect()
                 re = self.exec_command(command_str)
         except paramiko.AuthenticationException as ae:
-            LOG.error('doexec Authentication error:{}'.format(ae))
+            LOG.error(f'doexec Authentication error:{ae}')
             raise exception.InvalidUsernameOrPassword()
         except Exception as e:
-            LOG.error('doexec InvalidUsernameOrPassword error:{}'.format(e))
+            LOG.error(f'doexec InvalidUsernameOrPassword error:{e}')
             if 'WSAETIMEDOUT' in str(e):
                 raise exception.SSHConnectTimeout()
             elif 'No authentication methods available' in str(e) \
-                    or 'Authentication failed' in str(e):
+                        or 'Authentication failed' in str(e):
                 raise exception.InvalidUsernameOrPassword()
             elif 'not a valid RSA private key file' in str(e):
                 raise exception.InvalidPrivateKey()
@@ -176,9 +174,7 @@ class SSHPool(pools.Pool):
             if self.ssh_pub_key is None:
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             else:
-                host_key = '%s %s %s' % \
-                           (self.ssh_host, self.ssh_pub_key_type,
-                            self.ssh_pub_key)
+                host_key = f'{self.ssh_host} {self.ssh_pub_key_type} {self.ssh_pub_key}'
                 self.set_host_key(host_key, ssh)
 
             ssh.connect(hostname=self.ssh_host, port=self.ssh_port,
@@ -195,7 +191,7 @@ class SSHPool(pools.Pool):
             if 'timed out' in err:
                 raise exception.InvalidIpOrPort()
             elif 'No authentication methods available' in err \
-                    or 'Authentication failed' in err:
+                        or 'Authentication failed' in err:
                 raise exception.InvalidUsernameOrPassword()
             elif 'not a valid RSA private key file' in err:
                 raise exception.InvalidPrivateKey()
@@ -212,8 +208,7 @@ class SSHPool(pools.Pool):
         create and return a new connection.
         """
         if self.free_items:
-            conn = self.free_items.popleft()
-            if conn:
+            if conn := self.free_items.popleft():
                 if conn.get_transport().is_active():
                     return conn
                 else:
@@ -248,28 +243,28 @@ class SSHPool(pools.Pool):
                 if command_str is not None and ssh is not None:
                     stdin, stdout, stderr = ssh.exec_command(command_str)
                     res, err = stdout.read(), stderr.read()
-                    re = res if res else err
+                    re = res or err
                     result = re.decode()
         except paramiko.AuthenticationException as ae:
-            LOG.error('doexec Authentication error:{}'.format(ae))
+            LOG.error(f'doexec Authentication error:{ae}')
             raise exception.InvalidUsernameOrPassword()
         except Exception as e:
             err = six.text_type(e)
             LOG.error(err)
             if 'timed out' in err \
-                    or 'SSH connect timeout' in err\
-                    or 'Unable to connect to port' in err:
+                        or 'SSH connect timeout' in err\
+                        or 'Unable to connect to port' in err:
                 raise exception.ConnectTimeout()
             elif 'No authentication methods available' in err \
-                    or 'Authentication failed' in err \
-                    or 'Invalid username or password' in err:
+                        or 'Authentication failed' in err \
+                        or 'Invalid username or password' in err:
                 raise exception.InvalidUsernameOrPassword()
             elif 'not a valid RSA private key file' in err \
-                    or 'not a valid RSA private key' in err:
+                        or 'not a valid RSA private key' in err:
                 raise exception.InvalidPrivateKey()
             else:
                 raise exception.SSHException(err)
         if 'invalid command name' in result or 'login failed' in result or\
-                'is not a recognized command' in result:
+                    'is not a recognized command' in result:
             raise exception.StorageBackendException(result)
         return result

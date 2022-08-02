@@ -75,8 +75,7 @@ class SSHHandler(object):
             wsapi_values = str_line.split(' ')
             version = wsapi_values[6]
         except Exception as e:
-            LOG.error("Get version error: %s, wsapi info: %s" % (
-                six.text_type(e), wsapi_infos))
+            LOG.error(f"Get version error: {six.text_type(e)}, wsapi info: {wsapi_infos}")
         return version
 
     def get_health_state(self):
@@ -96,8 +95,7 @@ class SSHHandler(object):
         """
         utils.check_ssh_injection([alert_id])
         command_str = SSHHandler.HPE3PAR_COMMAND_REMOVEALERT % alert_id
-        res = self.exec_command(command_str)
-        if res:
+        if res := self.exec_command(command_str):
             if self.ALERT_NOT_EXIST_MSG not in res:
                 raise exception.InvalidResults(six.text_type(res))
             LOG.warning("Alert %s doesn't exist.", alert_id)
@@ -131,20 +129,18 @@ class SSHHandler(object):
         try:
             obj_infos = resource_info.split('\n')
             for obj_info in obj_infos:
-                str_line = obj_info.strip()
-                if str_line:
+                if str_line := obj_info.strip():
                     if str_line.startswith('Node:'):
                         str_info = self.split_str_by_colon(str_line)
                         node_info_map['node_id'] = str_info[1]
                     if str_line.startswith('OS version:'):
                         str_info = self.split_str_by_colon(str_line)
                         node_info_map['node_os_version'] = str_info[1]
-                else:
-                    if node_info_map:
-                        node_version_map[
-                            node_info_map.get('node_id')] = node_info_map.get(
-                            'node_os_version')
-                        node_info_map = {}
+                elif node_info_map:
+                    node_version_map[
+                        node_info_map.get('node_id')] = node_info_map.get(
+                        'node_os_version')
+                    node_info_map = {}
         except Exception as e:
             err_msg = "Analyse node version info error: %s", six.text_type(e)
             LOG.error(err_msg)
@@ -171,7 +167,6 @@ class SSHHandler(object):
                                        pattern_str=consts.DISK_PATTERN)
 
     def get_disks_inventory(self):
-        inventory_map = {}
         para_map = {
             'command': 'parse_disk_table'
         }
@@ -179,9 +174,9 @@ class SSHHandler(object):
             SSHHandler.HPE3PAR_COMMAND_SHOWPD_I, self.parse_datas_to_list,
             pattern_str=consts.DISK_I_PATTERN, para_map=para_map,
             throw_excep=False)
-        for inventory in (inventorys or []):
-            inventory_map[inventory.get('disk_id')] = inventory
-        return inventory_map
+        return {
+            inventory.get('disk_id'): inventory for inventory in (inventorys or [])
+        }
 
     def get_ports(self):
         return self.get_resources_info(SSHHandler.HPE3PAR_COMMAND_SHOWPORT,
@@ -209,14 +204,11 @@ class SSHHandler(object):
                                        para_map=para_map, throw_excep=False)
 
     def get_ports_iscsi(self):
-        iscsis_map = {}
         iscsis = self.get_resources_info(
             SSHHandler.HPE3PAR_COMMAND_SHOWPORT_ISCSI,
             self.parse_datas_to_list, pattern_str=consts.PORT_ISCSI_PATTERN,
             throw_excep=False)
-        for iscsi in (iscsis or []):
-            iscsis_map[iscsi.get('n:s:p')] = iscsi
-        return iscsis_map
+        return {iscsi.get('n:s:p'): iscsi for iscsi in (iscsis or [])}
 
     def get_ports_connected(self):
         para_map = {
@@ -229,34 +221,25 @@ class SSHHandler(object):
                                        para_map=para_map, throw_excep=False)
 
     def get_ports_rcip(self):
-        rcip_map = {}
         rcips = self.get_resources_info(
             SSHHandler.HPE3PAR_COMMAND_SHOWPORT_RCIP,
             self.parse_datas_to_list, pattern_str=consts.PORT_RCIP_PATTERN,
             throw_excep=False)
-        for rcip in (rcips or []):
-            rcip_map[rcip.get('n:s:p')] = rcip
-        return rcip_map
+        return {rcip.get('n:s:p'): rcip for rcip in (rcips or [])}
 
     def get_ports_fs(self):
-        port_fs_map = {}
         port_fss = self.get_resources_info(
             SSHHandler.HPE3PAR_COMMAND_SHOWPORT_FS,
             self.parse_datas_to_list, pattern_str=consts.PORT_FS_PATTERN,
             throw_excep=False)
-        for port_fs in (port_fss or []):
-            port_fs_map[port_fs.get('n:s:p')] = port_fs
-        return port_fs_map
+        return {port_fs.get('n:s:p'): port_fs for port_fs in (port_fss or [])}
 
     def get_ports_fcoe(self):
-        fcoe_map = {}
         fcoes = self.get_resources_info(
             SSHHandler.HPE3PAR_COMMAND_SHOWPORT_FCOE,
             self.parse_datas_to_list, pattern_str=consts.PORT_FCOE_PATTERN,
             throw_excep=False)
-        for fcoe in (fcoes or []):
-            fcoe_map[fcoe.get('n:s:p')] = fcoe
-        return fcoe_map
+        return {fcoe.get('n:s:p'): fcoe for fcoe in (fcoes or [])}
 
     def parse_datas_to_list(self, resource_info, pattern_str, para_map=None):
         obj_list = []
@@ -266,36 +249,33 @@ class SSHHandler(object):
             obj_infos = resource_info.split('\n')
             titles = []
             for obj_info in obj_infos:
-                str_line = obj_info.strip()
-                if str_line:
-                    search_obj = pattern.search(str_line)
-                    if search_obj:
+                if str_line := obj_info.strip():
+                    if search_obj := pattern.search(str_line):
                         titles = str_line.split()
                         titles_size = len(titles)
                     else:
                         str_info = str_line.split()
                         cols_size = len(str_info)
                         if para_map and para_map.get('command', '') \
-                                == 'parse_disk_table':
+                                    == 'parse_disk_table':
                             obj_list = self.parse_disk_table(cols_size,
                                                              titles_size,
                                                              str_info,
                                                              obj_list,
                                                              titles)
                         elif para_map and para_map.get('command', '') \
-                                == 'parse_node_table':
+                                    == 'parse_node_table':
                             obj_list = self.parse_node_table(cols_size,
                                                              titles_size,
                                                              str_info,
                                                              obj_list)
-                        else:
-                            if cols_size == titles_size:
-                                obj_model = {}
-                                for i in range(0, cols_size):
-                                    key = titles[i].lower().replace('-', '')
-                                    obj_model[key] = str_info[i]
-                                if obj_model:
-                                    obj_list.append(obj_model)
+                        elif cols_size == titles_size:
+                            obj_model = {}
+                            for i in range(cols_size):
+                                key = titles[i].lower().replace('-', '')
+                                obj_model[key] = str_info[i]
+                            if obj_model:
+                                obj_list.append(obj_model)
         except Exception as e:
             err_msg = "Analyse datas to list error: %s", six.text_type(e)
             LOG.error(err_msg)
@@ -309,10 +289,8 @@ class SSHHandler(object):
             pattern = re.compile(pattern_str)
             obj_infos = resource_info.split('\n')
             for obj_info in obj_infos:
-                str_line = obj_info.strip()
-                if str_line:
-                    search_obj = pattern.search(str_line)
-                    if search_obj:
+                if str_line := obj_info.strip():
+                    if search_obj := pattern.search(str_line):
                         titles = str_line.split()
                         titles_size = len(titles)
                     else:
@@ -324,14 +302,13 @@ class SSHHandler(object):
                                                             titles_size,
                                                             str_info,
                                                             obj_model)
-                        else:
-                            if cols_size >= titles_size:
-                                key_position = para_map.get('key_position')
-                                value_position = para_map.get('value_position')
-                                if para_map.get('value_position') == 'last':
-                                    value_position = cols_size - 1
-                                obj_model[str_info[key_position]] = str_info[
-                                    value_position]
+                        elif cols_size >= titles_size:
+                            key_position = para_map.get('key_position')
+                            value_position = para_map.get('value_position')
+                            if para_map.get('value_position') == 'last':
+                                value_position = cols_size - 1
+                            obj_model[str_info[key_position]] = str_info[
+                                value_position]
         except Exception as e:
             err_msg = "Analyse datas to map error: %s", six.text_type(e)
             LOG.error(err_msg)
@@ -341,8 +318,7 @@ class SSHHandler(object):
     def parse_disk_table(self, cols_size, titles_size, str_info,
                          obj_list, titles):
         if cols_size == titles_size:
-            fw_rev_index = self.get_index_of_key(titles, 'FW_Rev')
-            if fw_rev_index:
+            if fw_rev_index := self.get_index_of_key(titles, 'FW_Rev'):
                 inventory_map = {
                     'disk_id': str_info[0],
                     'disk_mfr': ' '.join(str_info[4:fw_rev_index - 2]),
@@ -377,8 +353,7 @@ class SSHHandler(object):
                 obj_map[node_id][cpu_info] = obj_map.get(node_id).get(
                     cpu_info, 0) + 1
             else:
-                cpu_info_map = {}
-                cpu_info_map[cpu_info] = 1
+                cpu_info_map = {cpu_info: 1}
                 obj_map[node_id] = cpu_info_map
         return obj_map
 
@@ -398,7 +373,7 @@ class SSHHandler(object):
                 resources_info = parse_type(re, pattern_str,
                                             para_map=para_map)
         except Exception as e:
-            LOG.error("Get %s info error: %s" % (command, six.text_type(e)))
+            LOG.error(f"Get {command} info error: {six.text_type(e)}")
             if throw_excep:
                 raise e
         return resources_info
@@ -410,6 +385,6 @@ class SSHHandler(object):
                 LOG.error(re)
                 raise NotImplementedError(re)
             elif 'Too many local CLI connections' in re:
-                LOG.error("command %s failed: %s" % (command, re))
+                LOG.error(f"command {command} failed: {re}")
                 raise exception.StorageBackendException(re)
         return re

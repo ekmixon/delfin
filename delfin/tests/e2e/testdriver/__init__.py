@@ -122,56 +122,60 @@ class TestDriver(driver.StorageDriver):
         pass
 
     def list_alerts(self, context, query_para=None):
-        alert_list = [{
-            "storage_id": self.storage_id,
-            'alert_id': str(random.randint(1111111, 9999999)),
-            'sequence_number': 100,
-            'alert_name': 'SNMP connect failed',
-            'category': 'Fault',
-            'severity': 'Major',
-            'type': 'OperationalViolation',
-            'location': 'NetworkEntity=entity1',
-            'description': "SNMP connection to the storage failed.",
-            'recovery_advice': "Check snmp configurations.",
-            'occur_time': int(time.time())
-        }, {
-            "storage_id": self.storage_id,
-            'alert_id': str(random.randint(1111111, 9999999)),
-            'sequence_number': 101,
-            'alert_name': 'Link state down',
-            'category': 'Fault',
-            'severity': 'Critical',
-            'type': 'CommunicationsAlarm',
-            'location': 'NetworkEntity=entity2',
-            'description': "Backend link has gone down",
-            'recovery_advice': "Recheck the network configuration setting.",
-            'occur_time': int(time.time())
-        }, {
-            "storage_id": self.storage_id,
-            'alert_id': str(random.randint(1111111, 9999999)),
-            'sequence_number': 102,
-            'alert_name': 'Power failure',
-            'category': 'Fault',
-            'severity': 'Fatal',
-            'type': 'OperationalViolation',
-            'location': 'NetworkEntity=entity3',
-            'description': "Power failure occurred. ",
-            'recovery_advice': "Investigate power connection.",
-            'occur_time': int(time.time())
-        }, {
-            "storage_id": self.storage_id,
-            'alert_id': str(random.randint(1111111, 9999999)),
-            'sequence_number': 103,
-            'alert_name': 'Communication failure',
-            'category': 'Fault',
-            'severity': 'Critical',
-            'type': 'CommunicationsAlarm',
-            'location': 'NetworkEntity=network1',
-            'description': "Communication link gone down",
-            'recovery_advice': "Consult network administrator",
-            'occur_time': int(time.time())
-        }]
-        return alert_list
+        return [
+            {
+                "storage_id": self.storage_id,
+                'alert_id': str(random.randint(1111111, 9999999)),
+                'sequence_number': 100,
+                'alert_name': 'SNMP connect failed',
+                'category': 'Fault',
+                'severity': 'Major',
+                'type': 'OperationalViolation',
+                'location': 'NetworkEntity=entity1',
+                'description': "SNMP connection to the storage failed.",
+                'recovery_advice': "Check snmp configurations.",
+                'occur_time': int(time.time()),
+            },
+            {
+                "storage_id": self.storage_id,
+                'alert_id': str(random.randint(1111111, 9999999)),
+                'sequence_number': 101,
+                'alert_name': 'Link state down',
+                'category': 'Fault',
+                'severity': 'Critical',
+                'type': 'CommunicationsAlarm',
+                'location': 'NetworkEntity=entity2',
+                'description': "Backend link has gone down",
+                'recovery_advice': "Recheck the network configuration setting.",
+                'occur_time': int(time.time()),
+            },
+            {
+                "storage_id": self.storage_id,
+                'alert_id': str(random.randint(1111111, 9999999)),
+                'sequence_number': 102,
+                'alert_name': 'Power failure',
+                'category': 'Fault',
+                'severity': 'Fatal',
+                'type': 'OperationalViolation',
+                'location': 'NetworkEntity=entity3',
+                'description': "Power failure occurred. ",
+                'recovery_advice': "Investigate power connection.",
+                'occur_time': int(time.time()),
+            },
+            {
+                "storage_id": self.storage_id,
+                'alert_id': str(random.randint(1111111, 9999999)),
+                'sequence_number': 103,
+                'alert_name': 'Communication failure',
+                'category': 'Fault',
+                'severity': 'Critical',
+                'type': 'CommunicationsAlarm',
+                'location': 'NetworkEntity=network1',
+                'description': "Communication link gone down",
+                'recovery_advice': "Consult network administrator",
+                'occur_time': int(time.time()),
+            },
+        ]
 
     def _get_volume_range(self, start, end):
         volume_list = []
@@ -179,16 +183,17 @@ class TestDriver(driver.StorageDriver):
         for i in range(start, end):
             total, used, free = self._get_random_capacity()
             v = {
-                "name": "fake_vol_" + str(i),
+                "name": f"fake_vol_{str(i)}",
                 "storage_id": self.storage_id,
                 "description": "Fake Volume",
                 "status": "normal",
-                "native_volume_id": "fake_original_id_" + str(i),
-                "wwn": "fake_wwn_" + str(i),
+                "native_volume_id": f"fake_original_id_{str(i)}",
+                "wwn": f"fake_wwn_{str(i)}",
                 "total_capacity": total,
                 "used_capacity": used,
                 "free_capacity": free,
             }
+
             volume_list.append(v)
         return volume_list
 

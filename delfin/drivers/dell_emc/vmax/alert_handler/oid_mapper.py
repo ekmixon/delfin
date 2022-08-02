@@ -35,7 +35,7 @@ class OidMapper(object):
     @staticmethod
     def map_oids(alert):
         """Translate oids using static map."""
-        alert_model = dict()
+        alert_model = {}
 
         for attr in alert:
             # Remove the instance number at the end of oid before mapping

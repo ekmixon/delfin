@@ -190,12 +190,13 @@ class SNMPValidator(object):
             'category': category,
             'severity': constants.Severity.MAJOR,
             'type': constants.EventType.COMMUNICATIONS_ALARM,
-            'location': 'NetworkEntity=%s' % storage['name'],
+            'location': f"NetworkEntity={storage['name']}",
             'description': "SNMP connection to the storage failed. "
-                           "SNMP traps from storage will not be received.",
+            "SNMP traps from storage will not be received.",
             'recovery_advice': "1. The network connection is abnormal. "
-                               "2. SNMP authentication parameters "
-                               "are invalid.",
+            "2. SNMP authentication parameters "
+            "are invalid.",
             'occur_time': utils.utcnow_ms(),
         }
+
         self.exporter.dispatch(ctxt, alert)

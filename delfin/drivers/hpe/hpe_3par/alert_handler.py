@@ -95,15 +95,16 @@ class AlertHandler(object):
         # Check for mandatory alert attributes
         for attr in AlertHandler._mandatory_alert_attributes:
             if not alert.get(attr):
-                msg = "Mandatory information %s missing in alert message. " \
-                      % attr
+                msg = f"Mandatory information {attr} missing in alert message. "
                 raise exception.InvalidInput(msg)
 
         try:
-            alert_model = dict()
-            # These information are sourced from device registration info
-            alert_model['alert_id'] = ("0x%07x" % int(
-                alert.get(AlertHandler.OID_MESSAGECODE)))
+            alert_model = {
+                'alert_id': (
+                    "0x%07x" % int(alert.get(AlertHandler.OID_MESSAGECODE))
+                )
+            }
+
             alert_model['alert_name'] = AlertHandler.get_alert_type(alert.get(
                 AlertHandler.OID_MESSAGECODE))
             alert_model['severity'] = AlertHandler.SEVERITY_MAP.get(
@@ -146,13 +147,13 @@ class AlertHandler(object):
         try:
             if alert:
                 self.ssh_handler.remove_alerts(alert)
-                LOG.info("Clear alert %s successfully." % alert)
+                LOG.info(f"Clear alert {alert} successfully.")
         except exception.DelfinException as e:
-            err_msg = "Remove alert %s failed: %s" % (alert, e.msg)
+            err_msg = f"Remove alert {alert} failed: {e.msg}"
             LOG.error(err_msg)
             raise e
         except Exception as e:
-            err_msg = "Remove alert %s failed: %s" % (alert, six.text_type(e))
+            err_msg = f"Remove alert {alert} failed: {six.text_type(e)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -160,12 +161,12 @@ class AlertHandler(object):
     def judge_alert_time(map, query_para):
         if len(map) <= 1:
             return False
-        if query_para is None and len(map) > 1:
+        if query_para is None:
             return True
         occur_time = AlertHandler.get_time_stamp(map.get('occur_time'))
         if query_para.get('begin_time') and query_para.get('end_time'):
             if occur_time >= int(query_para.get('begin_time')) and \
-                    occur_time <= int(query_para.get('end_time')):
+                        occur_time <= int(query_para.get('end_time')):
                 return True
         elif query_para.get('begin_time'):
             if occur_time >= int(query_para.get('begin_time')):
@@ -215,8 +216,7 @@ class AlertHandler(object):
             try:
                 reslist = self.ssh_handler.get_all_alerts()
             except Exception as e:
-                err_msg = "Failed to ssh Hpe3parStor: %s" % \
-                          (six.text_type(e))
+                err_msg = f"Failed to ssh Hpe3parStor: {six.text_type(e)}"
                 LOG.error(err_msg)
                 raise exception.SSHException(err_msg)
 
@@ -224,11 +224,11 @@ class AlertHandler(object):
 
             return self.handle_alters(alertlist, query_para)
         except exception.DelfinException as e:
-            err_msg = "Get alerts failed: %s" % (e.msg)
+            err_msg = f"Get alerts failed: {e.msg}"
             LOG.error(err_msg)
             raise e
         except Exception as e:
-            err_msg = "Get alert failed: %s" % (six.text_type(e))
+            err_msg = f"Get alert failed: {six.text_type(e)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 

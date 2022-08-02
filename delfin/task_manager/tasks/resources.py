@@ -46,8 +46,7 @@ def set_synced_after():
             try:
                 storage = db.storage_get(self.context, self.storage_id)
             except exception.StorageNotFound:
-                LOG.warn('Storage %s not found when set synced'
-                         % self.storage_id)
+                LOG.warn(f'Storage {self.storage_id} not found when set synced')
             else:
                 # One sync task done, sync status minus 1
                 # When sync status get to 0
@@ -73,8 +72,7 @@ def check_deleted():
         try:
             db.storage_get(self.context, self.storage_id)
         except exception.StorageNotFound:
-            LOG.debug('Storage %s not found when checking deleted'
-                      % self.storage_id)
+            LOG.debug(f'Storage {self.storage_id} not found when checking deleted')
         else:
             self.remove()
         self.context.read_deleted = 'no'

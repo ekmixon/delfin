@@ -41,9 +41,7 @@ class PrometheusAlertExporter(object):
         host = alert_cfg.alert_manager_host
         port = alert_cfg.alert_manager_port
         for alert in alerts:
-            dict = {}
-            dict["labels"] = {}
-            dict["annotations"] = {}
+            dict = {"labels": {}, "annotations": {}}
             for key in self.model_key:
                 dict["labels"][key] = str(alert.get(key))
 
@@ -51,9 +49,10 @@ class PrometheusAlertExporter(object):
 
             self.alerts.append(dict)
             try:
-                response = requests.post('http://' + host + ":" + port +
-                                         '/api/v1/alerts',
-                                         json=self.alerts)
+                response = requests.post(
+                    (f'http://{host}:{port}' + '/api/v1/alerts'), json=self.alerts
+                )
+
                 if response.status_code != 200:
                     LOG.error("POST request failed for alert %s ",
                               alert.get('alert_id'))

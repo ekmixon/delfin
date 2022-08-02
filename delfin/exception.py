@@ -58,10 +58,7 @@ class DelfinException(Exception):
         self.error_args = args
         message = kwargs.get('message')
         try:
-            if not message:
-                message = self.msg_fmt.format(*args)
-            else:
-                message = six.text_type(message)
+            message = six.text_type(message) if message else self.msg_fmt.format(*args)
         except Exception:
             LOG.error("Failed to format message: {0}".format(args))
             message = self.msg_fmt

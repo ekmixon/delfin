@@ -60,16 +60,14 @@ class ExtensionDescriptor(object):
         Resources define new nouns, and are accessible through URLs.
 
         """
-        resources = []
-        return resources
+        return []
 
     def get_controller_extensions(self):
         """List of extensions.ControllerExtension extension objects.
 
         Controller extensions are used to extend existing controllers.
         """
-        controller_exts = []
-        return controller_exts
+        return []
 
 
 class ExtensionsResource(wsgi.Resource):
@@ -79,18 +77,20 @@ class ExtensionsResource(wsgi.Resource):
         super(ExtensionsResource, self).__init__(None)
 
     def _translate(self, ext):
-        ext_data = {}
-        ext_data['name'] = ext.name
-        ext_data['alias'] = ext.alias
-        ext_data['description'] = ext.__doc__
-        ext_data['updated'] = ext.updated
-        ext_data['links'] = []  # TODO(dprince): implement extension links
-        return ext_data
+        return {
+            'name': ext.name,
+            'alias': ext.alias,
+            'description': ext.__doc__,
+            'updated': ext.updated,
+            'links': [],
+        }
 
     def index(self, req):
-        extensions = []
-        for _alias, ext in self.extension_manager.extensions.items():
-            extensions.append(self._translate(ext))
+        extensions = [
+            self._translate(ext)
+            for _alias, ext in self.extension_manager.extensions.items()
+        ]
+
         return dict(extensions=extensions)
 
     def show(self, req, id):
@@ -140,10 +140,7 @@ class ExtensionManager(object):
     def get_resources(self):
         """Returns a list of ResourceExtension objects."""
 
-        resources = []
-        resources.append(ResourceExtension('extensions',
-                                           ExtensionsResource(self)))
-
+        resources = [ResourceExtension('extensions', ExtensionsResource(self))]
         for ext in self.extensions.values():
             try:
                 resources.extend(ext.get_resources())
@@ -207,11 +204,11 @@ class ExtensionManager(object):
         # We can drop this post-grizzly in the H release.
         old_contrib_path = ('delfin.api.common.share.contrib.'
                             'standard_extensions')
-        new_contrib_path = 'delfin.api.contrib.standard_extensions'
         if old_contrib_path in extensions:
             LOG.warning('delfin_api_extension is set to deprecated path: '
                         '%s.',
                         old_contrib_path)
+            new_contrib_path = 'delfin.api.contrib.standard_extensions'
             LOG.warning('Please set your flag or delfin.conf settings for '
                         'delfin_api_extension to: %s.', new_contrib_path)
             extensions = [e.replace(old_contrib_path, new_contrib_path)
@@ -265,11 +262,7 @@ def load_standard_extensions(ext_mgr, logger, path, package, ext_list=None):
     for dirpath, dirnames, filenames in os.walk(our_dir):
         # Compute the relative package name from the dirpath
         relpath = os.path.relpath(dirpath, our_dir)
-        if relpath == '.':
-            relpkg = ''
-        else:
-            relpkg = '.%s' % '.'.join(relpath.split(os.sep))
-
+        relpkg = '' if relpath == '.' else f".{'.'.join(relpath.split(os.sep))}"
         # Now, consider each file in turn, only considering .py and .pyc files
         for fname in filenames:
             root, ext = os.path.splitext(fname)
@@ -279,16 +272,15 @@ def load_standard_extensions(ext_mgr, logger, path, package, ext_list=None):
                 continue
 
             # If .pyc and .py both exist, skip .pyc
-            if ext == '.pyc' and ((root + '.py') in filenames):
+            if ext == '.pyc' and f'{root}.py' in filenames:
                 continue
 
             # Try loading it
-            classname = "%s%s" % (root[0].upper(), root[1:])
-            classpath = ("%s%s.%s.%s" %
-                         (package, relpkg, root, classname))
+            classname = f"{root[0].upper()}{root[1:]}"
+            classpath = f"{package}{relpkg}.{root}.{classname}"
 
             if ext_list is not None and classname not in ext_list:
-                logger.debug("Skipping extension: %s" % classpath)
+                logger.debug(f"Skipping extension: {classpath}")
                 continue
 
             try:
@@ -307,8 +299,7 @@ def load_standard_extensions(ext_mgr, logger, path, package, ext_list=None):
                 continue
 
             # If it has extension(), delegate...
-            ext_name = ("%s%s.%s.extension" %
-                        (package, relpkg, dname))
+            ext_name = f"{package}{relpkg}.{dname}.extension"
             try:
                 ext = importutils.import_class(ext_name)
             except ImportError:

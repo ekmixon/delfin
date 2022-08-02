@@ -36,16 +36,15 @@ class StorageHostController(wsgi.Controller):
             ctxt, filters={"storage_id": storage_id,
                            "native_storage_host_id":
                                storage_host['native_storage_host_id']})
-        storage_host_initiator_list = []
-        for storage_host_initiator in storage_host_initiators:
-            storage_host_initiator_list.append(
-                storage_host_initiator['native_storage_host_initiator_id'])
-        return storage_host_initiator_list
+        return [
+            storage_host_initiator['native_storage_host_initiator_id']
+            for storage_host_initiator in storage_host_initiators
+        ]
 
     def show(self, req, id):
         ctxt = req.environ['delfin.context']
         query_params = {"storage_id": id}
-        query_params.update(req.GET)
+        query_params |= req.GET
         # Update options  other than filters
         sort_keys, sort_dirs = api_utils.get_sort_params(query_params)
         marker, limit, offset = api_utils.get_pagination_params(query_params)
@@ -58,7 +57,7 @@ class StorageHostController(wsgi.Controller):
                                                  query_params, offset)
         for storage_host in storage_hosts:
             storage_host['storage_host_initiators'] \
-                = self._fill_storage_host_initiators(ctxt, storage_host, id)
+                    = self._fill_storage_host_initiators(ctxt, storage_host, id)
 
         return storage_host_view.build_storage_hosts(storage_hosts)
 

@@ -35,11 +35,11 @@ class NaviClient(object):
             p = Popen(command_str, stdin=PIPE, stdout=PIPE, stderr=PIPE,
                       shell=False)
         except FileNotFoundError as e:
-            err_msg = "naviseccli tool not found: %s" % (six.text_type(e))
+            err_msg = f"naviseccli tool not found: {six.text_type(e)}"
             LOG.error(err_msg)
             raise exception.ComponentNotFound('naviseccli')
         except Exception as e:
-            err_msg = "naviseccli exec error: %s" % (six.text_type(e))
+            err_msg = f"naviseccli exec error: {six.text_type(e)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -55,11 +55,12 @@ class NaviClient(object):
             # Determine whether an exception occurs according
             # to the returned information
             for exception_key in consts.EXCEPTION_MAP.keys():
-                if stdin_value is None or stdin_value == consts.CER_STORE:
-                    if exception_key == consts.CER_ERR:
-                        continue
+                if (
+                    stdin_value is None or stdin_value == consts.CER_STORE
+                ) and exception_key == consts.CER_ERR:
+                    continue
                 if exception_key in result:
-                    LOG.error('VNX Block exec failed: %s' % result)
+                    LOG.error(f'VNX Block exec failed: {result}')
                     raise consts.EXCEPTION_MAP.get(exception_key)(result)
 
         return result

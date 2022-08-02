@@ -135,9 +135,9 @@ def paginate_query(query, model, limit, sort_keys, marker=None,
 
         # Build up an array of sort criteria as in the docstring
         criteria_list = []
-        for i in range(0, len(sort_keys)):
+        for i in range(len(sort_keys)):
             crit_attrs = []
-            for j in range(0, i):
+            for j in range(i):
                 model_attr = getattr(model, sort_keys[j])
                 default = _get_default_column_value(model, sort_keys[j])
                 attr = sa_sql.expression.case([(model_attr.isnot(None),

@@ -32,7 +32,7 @@ class StorageHostGroupController(wsgi.Controller):
     def show(self, req, id):
         ctxt = req.environ['delfin.context']
         query_params = {"storage_id": id}
-        query_params.update(req.GET)
+        query_params |= req.GET
         # Update options  other than filters
         sort_keys, sort_dirs = api_utils.get_sort_params(query_params)
         marker, limit, offset = api_utils.get_pagination_params(query_params)
@@ -52,15 +52,14 @@ class StorageHostGroupController(wsgi.Controller):
             hosts = db.storage_host_grp_host_rels_get_all(
                 ctxt, filters=params)
 
-            native_storage_host_id_list = []
-            for host in hosts:
-                native_storage_host_id_list.append(
-                    host['native_storage_host_id'])
+            native_storage_host_id_list = [
+                host['native_storage_host_id'] for host in hosts
+            ]
 
             host_group['storage_hosts'] = native_storage_host_id_list
 
         return storage_host_group_view\
-            .build_storage_host_groups(storage_host_groups)
+                .build_storage_host_groups(storage_host_groups)
 
 
 def create_resource():

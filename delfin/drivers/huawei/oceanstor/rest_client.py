@@ -43,10 +43,7 @@ def _get_selection(selection):
     for key, value in consts.OCEANSTOR_METRICS.items():
         if selection.get(key):
             selected_metrics.append(key)
-            if ids:
-                ids = ids + ',' + value
-            else:
-                ids = value
+            ids = f'{ids},{value}' if ids else value
     return selected_metrics, ids
 
 
@@ -65,7 +62,7 @@ class RestClient(object):
 
         # Lists of addresses to try, for authorization
         address = 'https://%(host)s:%(port)s/deviceManager/rest/' % \
-                  {'host': self.rest_host, 'port': str(self.rest_port)}
+                      {'host': self.rest_host, 'port': str(self.rest_port)}
         self.san_address = [address]
         self.session = None
         self.url = None
@@ -79,7 +76,7 @@ class RestClient(object):
         try:
             self.login()
         except Exception as ex:
-            msg = "Failed to login to OceanStor: {}".format(ex)
+            msg = f"Failed to login to OceanStor: {ex}"
             LOG.error(msg)
             raise exception.InvalidCredential(msg)
 
@@ -159,7 +156,7 @@ class RestClient(object):
         """Login Huawei storage array."""
         device_id = None
         for item_url in self.san_address:
-            url = item_url + "xx/sessions"
+            url = f"{item_url}xx/sessions"
             data = {"username": self.rest_username,
                     "password": cryptor.decode(self.rest_password),
                     "scope": "0"}
@@ -205,8 +202,10 @@ class RestClient(object):
         result = self.do_call(url, data, method,
                               log_filter_flag=log_filter_flag)
         error_code = result['error']['code']
-        if (error_code == consts.ERROR_CONNECT_TO_SERVER
-                or error_code == consts.ERROR_UNAUTHORIZED_TO_SERVER):
+        if error_code in [
+            consts.ERROR_CONNECT_TO_SERVER,
+            consts.ERROR_UNAUTHORIZED_TO_SERVER,
+        ]:
             LOG.error("Can't open the recent url, relogin.")
             device_id = self.login()
 
@@ -225,11 +224,7 @@ class RestClient(object):
     def paginated_call(self, url, data=None, method=None,
                        params=None, log_filter_flag=False,
                        page_size=consts.QUERY_PAGE_SIZE):
-        if params:
-            url = "{0}?{1}".format(url, params)
-        else:
-            url = "{0}?".format(url)
-
+        url = "{0}?{1}".format(url, params) if params else "{0}?".format(url)
         result_list = []
         start, end = 0, page_size
         msg = _('Query resource volume error')
@@ -252,8 +247,8 @@ class RestClient(object):
 
     def logout(self):
         """Logout the session."""
-        url = "/sessions"
         if self.url:
+            url = "/sessions"
             result = self.do_call(url, None, "DELETE")
             self._assert_rest_result(result, _('Logout session error.'))
 
@@ -316,7 +311,7 @@ class RestClient(object):
             url, None, "GET", log_filter_flag=True)
 
         return fc_ports + fcoe_ports + eth_ports\
-            + pcie_ports + bond_ports + sas_ports
+                + pcie_ports + bond_ports + sas_ports
 
     def get_all_volumes(self):
         url = "/lun"
@@ -369,23 +364,18 @@ class RestClient(object):
         return cifs + nfs + ftps
 
     def clear_alert(self, sequence_number):
-        url = "/alarm/currentalarm?sequence=%s" % sequence_number
+        url = f"/alarm/currentalarm?sequence={sequence_number}"
 
         # Result always contains error code and description
         result = self.call(url, method="DELETE", log_filter_flag=True)
         if result['error']['code']:
-            msg = 'Clear alert failed with reason: %s.' \
-                  % result['error']['description']
+            msg = f"Clear alert failed with reason: {result['error']['description']}."
             raise exception.InvalidResults(msg)
         return result
 
     def list_alerts(self):
         url = "/alarm/currentalarm"
-        result_list = self.paginated_call(url,
-                                          None,
-                                          "GET",
-                                          log_filter_flag=True)
-        return result_list
+        return self.paginated_call(url, None, "GET", log_filter_flag=True)
 
     def _get_performance_switch(self):
         url = "/performance_statistic_switch"
@@ -435,8 +425,8 @@ class RestClient(object):
     def _get_metrics(self, resource_type, resource_id, metrics_ids):
         url = "/performace_statistic/cur_statistic_data"
         params = "CMO_STATISTIC_UUID={0}:{1}&CMO_STATISTIC_DATA_ID_LIST={2}&"\
-                 "timeConversion=0&"\
-            .format(resource_type, resource_id, metrics_ids)
+                     "timeConversion=0&"\
+                .format(resource_type, resource_id, metrics_ids)
         return self.paginated_call(url, None, "GET",
                                    params=params, log_filter_flag=True)
 
@@ -467,7 +457,7 @@ class RestClient(object):
                     for index, key in enumerate(select_metrics):
                         data = int(data_list[index])
                         if key in consts.CONVERT_TO_MILLI_SECOND_LIST:
-                            data = data * 1000
+                            data *= 1000
                         labels = {
                             'storage_id': storage_id,
                             'resource_type': 'pool',
@@ -482,7 +472,7 @@ class RestClient(object):
                         pool_metrics.append(m)
             except Exception as ex:
                 msg = "Failed to get metrics for pool:{0} error: {1}" \
-                    .format(pool['NAME'], ex)
+                        .format(pool['NAME'], ex)
                 LOG.error(msg)
         return pool_metrics
 
@@ -500,7 +490,7 @@ class RestClient(object):
                     for index, key in enumerate(select_metrics):
                         data = int(data_list[index])
                         if key in consts.CONVERT_TO_MILLI_SECOND_LIST:
-                            data = data * 1000
+                            data *= 1000
                         labels = {
                             'storage_id': storage_id,
                             'resource_type': 'volume',
@@ -515,7 +505,7 @@ class RestClient(object):
                         volume_metrics.append(m)
             except Exception as ex:
                 msg = "Failed to get metrics for volume:{0} error: {1}" \
-                    .format(volume['NAME'], ex)
+                        .format(volume['NAME'], ex)
                 LOG.error(msg)
 
         return volume_metrics
@@ -535,7 +525,7 @@ class RestClient(object):
                     for index, key in enumerate(select_metrics):
                         data = int(data_list[index])
                         if key in consts.CONVERT_TO_MILLI_SECOND_LIST:
-                            data = data * 1000
+                            data *= 1000
                         labels = {
                             'storage_id': storage_id,
                             'resource_type': 'controller',
@@ -550,7 +540,7 @@ class RestClient(object):
                         controller_metrics.append(m)
             except Exception as ex:
                 msg = "Failed to get metrics for controller:{0} error: {1}" \
-                    .format(controller['NAME'], ex)
+                        .format(controller['NAME'], ex)
                 LOG.error(msg)
 
         return controller_metrics
@@ -572,7 +562,7 @@ class RestClient(object):
                     for index, key in enumerate(select_metrics):
                         data = int(data_list[index])
                         if key in consts.CONVERT_TO_MILLI_SECOND_LIST:
-                            data = data * 1000
+                            data *= 1000
                         labels = {
                             'storage_id': storage_id,
                             'resource_type': 'port',
@@ -587,7 +577,7 @@ class RestClient(object):
                         port_metrics.append(m)
             except Exception as ex:
                 msg = "Failed to get metrics for port:{0} error: {1}" \
-                    .format(port['NAME'], ex)
+                        .format(port['NAME'], ex)
                 LOG.error(msg)
 
         return port_metrics
@@ -606,7 +596,7 @@ class RestClient(object):
                     for index, key in enumerate(select_metrics):
                         data = int(data_list[index])
                         if key in consts.CONVERT_TO_MILLI_SECOND_LIST:
-                            data = data * 1000
+                            data *= 1000
                         labels = {
                             'storage_id': storage_id,
                             'resource_type': 'disk',
@@ -622,7 +612,7 @@ class RestClient(object):
                         disk_metrics.append(m)
             except Exception as ex:
                 msg = "Failed to get metrics for disk:{0} error: {1}"\
-                    .format(disk['ID'], ex)
+                        .format(disk['ID'], ex)
                 LOG.error(msg)
 
         return disk_metrics

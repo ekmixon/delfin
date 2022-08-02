@@ -35,12 +35,5 @@ def build_storage(storage):
 def build_capabilities(storage_info, capabilities):
     """build capability API response"""
     # build metadata
-    metadata = dict()
-    metadata['vendor'] = storage_info['vendor']
-    metadata['model'] = storage_info['model']
-
-    # create final view
-    view = dict()
-    view['metadata'] = metadata
-    view['spec'] = capabilities
-    return view
+    metadata = {'vendor': storage_info['vendor'], 'model': storage_info['model']}
+    return {'metadata': metadata, 'spec': capabilities}

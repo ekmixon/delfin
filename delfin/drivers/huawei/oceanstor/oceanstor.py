@@ -104,11 +104,11 @@ class OceanStorDriver(driver.StorageDriver):
                     storage_type = constants.StorageType.FILE
 
                 total_cap = \
-                    int(pool['USERTOTALCAPACITY']) * self.sector_size
+                        int(pool['USERTOTALCAPACITY']) * self.sector_size
                 used_cap = \
-                    int(pool['USERCONSUMEDCAPACITY']) * self.sector_size
+                        int(pool['USERCONSUMEDCAPACITY']) * self.sector_size
                 free_cap = \
-                    int(pool['USERFREECAPACITY']) * self.sector_size
+                        int(pool['USERFREECAPACITY']) * self.sector_size
 
                 p = {
                     'name': pool['NAME'],
@@ -126,16 +126,15 @@ class OceanStorDriver(driver.StorageDriver):
             return pool_list
 
         except Exception as err:
-            LOG.error(
-                "Failed to get pool metrics from OceanStor: {}".format(err))
+            LOG.error(f"Failed to get pool metrics from OceanStor: {err}")
             raise exception.StorageBackendException(
                 'Failed to get pool metrics from OceanStor')
 
     def _get_orig_pool_id(self, pools, volume):
-        for pool in pools:
-            if volume['PARENTNAME'] == pool['NAME']:
-                return pool['ID']
-        return ''
+        return next(
+            (pool['ID'] for pool in pools if volume['PARENTNAME'] == pool['NAME']),
+            '',
+        )
 
     def list_volumes(self, context):
         try:
@@ -188,8 +187,7 @@ class OceanStorDriver(driver.StorageDriver):
             return volume_list
 
         except Exception as err:
-            LOG.error(
-                "Failed to get list volumes from OceanStor: {}".format(err))
+            LOG.error(f"Failed to get list volumes from OceanStor: {err}")
             raise exception.StorageBackendException(
                 'Failed to get list volumes from OceanStor')
 
@@ -221,14 +219,14 @@ class OceanStorDriver(driver.StorageDriver):
             return controller_list
 
         except exception.DelfinException as err:
-            err_msg = "Failed to get controller metrics from OceanStor: %s" %\
-                      (six.text_type(err))
+            err_msg = f"Failed to get controller metrics from OceanStor: {six.text_type(err)}"
+
             LOG.error(err_msg)
             raise err
 
         except Exception as err:
-            err_msg = "Failed to get controller metrics from OceanStor: %s" %\
-                      (six.text_type(err))
+            err_msg = f"Failed to get controller metrics from OceanStor: {six.text_type(err)}"
+
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -300,14 +298,12 @@ class OceanStorDriver(driver.StorageDriver):
             return port_list
 
         except exception.DelfinException as err:
-            err_msg = "Failed to get port metrics from OceanStor: %s" %\
-                      (six.text_type(err))
+            err_msg = f"Failed to get port metrics from OceanStor: {six.text_type(err)}"
             LOG.error(err_msg)
             raise err
 
         except Exception as err:
-            err_msg = "Failed to get port metrics from OceanStor: %s" %\
-                      (six.text_type(err))
+            err_msg = f"Failed to get port metrics from OceanStor: {six.text_type(err)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -356,14 +352,12 @@ class OceanStorDriver(driver.StorageDriver):
             return disk_list
 
         except exception.DelfinException as err:
-            err_msg = "Failed to get disk metrics from OceanStor: %s" %\
-                      (six.text_type(err))
+            err_msg = f"Failed to get disk metrics from OceanStor: {six.text_type(err)}"
             LOG.error(err_msg)
             raise err
 
         except Exception as err:
-            err_msg = "Failed to get disk metrics from OceanStor: %s" %\
-                      (six.text_type(err))
+            err_msg = f"Failed to get disk metrics from OceanStor: {six.text_type(err)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -413,30 +407,26 @@ class OceanStorDriver(driver.StorageDriver):
             filesystems = self.client.get_all_filesystems()
             for fs in filesystems:
                 fs_id = fs["ID"]
-                quotas = self.client.get_all_filesystem_quotas(fs_id)
-                if quotas:
+                if quotas := self.client.get_all_filesystem_quotas(fs_id):
                     qs = self._list_quotas(quotas, fs_id, None)
                     quotas_list.extend(qs)
 
             qtrees = self.client.get_all_qtrees(filesystems)
             for qt in qtrees:
                 qt_id = qt["ID"]
-                quotas = self.client.get_all_qtree_quotas(qt_id)
-                if quotas:
+                if quotas := self.client.get_all_qtree_quotas(qt_id):
                     qs = self._list_quotas(quotas, None, qt_id)
                     quotas_list.extend(qs)
 
             return quotas_list
 
         except exception.DelfinException as err:
-            err_msg = "Failed to get quotas from OceanStor: %s" %\
-                      (six.text_type(err))
+            err_msg = f"Failed to get quotas from OceanStor: {six.text_type(err)}"
             LOG.error(err_msg)
             raise err
 
         except Exception as err:
-            err_msg = "Failed to get quotas from OceanStor: %s" %\
-                      (six.text_type(err))
+            err_msg = f"Failed to get quotas from OceanStor: {six.text_type(err)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -496,14 +486,12 @@ class OceanStorDriver(driver.StorageDriver):
             return fs_list
 
         except exception.DelfinException as err:
-            err_msg = "Failed to get filesystems from OceanStor: %s" %\
-                      (six.text_type(err))
+            err_msg = f"Failed to get filesystems from OceanStor: {six.text_type(err)}"
             LOG.error(err_msg)
             raise err
 
         except Exception as err:
-            err_msg = "Failed to get filesystems from OceanStor: %s" %\
-                      (six.text_type(err))
+            err_msg = f"Failed to get filesystems from OceanStor: {six.text_type(err)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -536,14 +524,12 @@ class OceanStorDriver(driver.StorageDriver):
             return qt_list
 
         except exception.DelfinException as err:
-            err_msg = "Failed to get qtrees from OceanStor: %s" %\
-                      (six.text_type(err))
+            err_msg = f"Failed to get qtrees from OceanStor: {six.text_type(err)}"
             LOG.error(err_msg)
             raise err
 
         except Exception as err:
-            err_msg = "Failed to get qtrees from OceanStor: %s" %\
-                      (six.text_type(err))
+            err_msg = f"Failed to get qtrees from OceanStor: {six.text_type(err)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -576,14 +562,12 @@ class OceanStorDriver(driver.StorageDriver):
             return s_list
 
         except exception.DelfinException as err:
-            err_msg = "Failed to get shares from OceanStor: %s" %\
-                      (six.text_type(err))
+            err_msg = f"Failed to get shares from OceanStor: {six.text_type(err)}"
             LOG.error(err_msg)
             raise err
 
         except Exception as err:
-            err_msg = "Failed to get shares from OceanStor: %s" %\
-                      (six.text_type(err))
+            err_msg = f"Failed to get shares from OceanStor: {six.text_type(err)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -603,9 +587,9 @@ class OceanStorDriver(driver.StorageDriver):
     def list_alerts(self, context, query_para):
         # First query alerts and then translate to model
         alert_list = self.client.list_alerts()
-        alert_model_list = alert_handler.AlertHandler()\
-            .parse_queried_alerts(alert_list, query_para)
-        return alert_model_list
+        return alert_handler.AlertHandler().parse_queried_alerts(
+            alert_list, query_para
+        )
 
     def collect_perf_metrics(self, context, storage_id,
                              resource_metrics, start_time,
@@ -617,14 +601,12 @@ class OceanStorDriver(driver.StorageDriver):
                 self.init_perf_config = False
 
         except exception.DelfinException as err:
-            err_msg = "Failed to configure collection in OceanStor: %s" %\
-                      (six.text_type(err))
+            err_msg = f"Failed to configure collection in OceanStor: {six.text_type(err)}"
             LOG.error(err_msg)
             raise err
 
         except Exception as err:
-            err_msg = "Failed to configure collection in OceanStor: %s" %\
-                      (six.text_type(err))
+            err_msg = f"Failed to configure collection in OceanStor: {six.text_type(err)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -666,14 +648,12 @@ class OceanStorDriver(driver.StorageDriver):
                 metrics.extend(disk_metrics)
 
         except exception.DelfinException as err:
-            err_msg = "Failed to collect metrics from OceanStor: %s" %\
-                      (six.text_type(err))
+            err_msg = f"Failed to collect metrics from OceanStor: {six.text_type(err)}"
             LOG.error(err_msg)
             raise err
 
         except Exception as err:
-            err_msg = "Failed to collect metrics from OceanStor: %s" %\
-                      (six.text_type(err))
+            err_msg = f"Failed to collect metrics from OceanStor: {six.text_type(err)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 

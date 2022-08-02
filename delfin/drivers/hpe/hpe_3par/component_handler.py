@@ -70,7 +70,7 @@ class ComponentHandler():
             used_cap = int(storage.get('allocatedCapacityMiB')) * units.Mi
             total_cap = free_cap + used_cap
             raw_cap = int(storage.get('totalCapacityMiB')) * units.Mi
-            result = {
+            return {
                 'name': storage.get('name'),
                 'vendor': ComponentHandler.HPE3PAR_VENDOR,
                 'model': storage.get('model'),
@@ -81,16 +81,14 @@ class ComponentHandler():
                 'total_capacity': total_cap,
                 'raw_capacity': raw_cap,
                 'used_capacity': used_cap,
-                'free_capacity': free_cap
+                'free_capacity': free_cap,
             }
+
         else:
             # If no data is returned, it indicates that there
             # may be a problem with the network or the device.
             # Default return OFFLINE
-            result = {
-                'status': constants.StorageStatus.OFFLINE
-            }
-        return result
+            return {'status': constants.StorageStatus.OFFLINE}
 
     def list_storage_pools(self, context):
         try:
@@ -125,25 +123,24 @@ class ComponentHandler():
                         'name': pool.get('name'),
                         'storage_id': self.storage_id,
                         'native_storage_pool_id': str(pool.get('id')),
-                        'description': 'Hpe 3par CPG:%s' % pool.get('name'),
+                        'description': f"Hpe 3par CPG:{pool.get('name')}",
                         'status': status,
                         'storage_type': pool_type,
                         'total_capacity': total_cap,
                         'subscribed_capacity': subscribed_cap,
                         'used_capacity': used_cap,
-                        'free_capacity': free_cap
+                        'free_capacity': free_cap,
                     }
+
                     pool_list.append(p)
             return pool_list
 
         except exception.DelfinException as e:
-            err_msg = "Failed to get pool metrics from Hpe3parStor: %s" % \
-                      (e.msg)
+            err_msg = f"Failed to get pool metrics from Hpe3parStor: {e.msg}"
             LOG.error(err_msg)
             raise e
         except Exception as e:
-            err_msg = "Failed to get pool metrics from Hpe3parStor: %s" % \
-                      (six.text_type(e))
+            err_msg = f"Failed to get pool metrics from Hpe3parStor: {six.text_type(e)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -151,42 +148,41 @@ class ComponentHandler():
         volume_list = []
         if volumes is None:
             return
-        else:
-            members = volumes.get('members')
-            for volume in members:
-                status = self.STATUS_MAP.get(volume.get('state'))
-                orig_pool_name = volume.get('userCPG', '')
+        members = volumes.get('members')
+        compressed = True
+        deduplicated = True
 
-                compressed = True
-                deduplicated = True
+        for volume in members:
+            status = self.STATUS_MAP.get(volume.get('state'))
+            orig_pool_name = volume.get('userCPG', '')
 
-                vol_type = self.VOL_TYPE_MAP.get(
-                    volume.get('provisioningType'))
+            vol_type = self.VOL_TYPE_MAP.get(
+                volume.get('provisioningType'))
 
-                # Virtual size of volume in MiB (10242bytes).
-                usr_used = int(
-                    volume['userSpace']['usedMiB']) * units.Mi
-                total_cap = int(volume['sizeMiB']) * units.Mi
-                used_cap = usr_used
-                free_cap = total_cap - used_cap
+            # Virtual size of volume in MiB (10242bytes).
+            usr_used = int(
+                volume['userSpace']['usedMiB']) * units.Mi
+            total_cap = int(volume['sizeMiB']) * units.Mi
+            used_cap = usr_used
+            free_cap = total_cap - used_cap
 
-                v = {
-                    'name': volume.get('name'),
-                    'storage_id': self.storage_id,
-                    'description': volume.get('comment'),
-                    'status': status,
-                    'native_volume_id': str(volume.get('id')),
-                    'native_storage_pool_id': pool_ids.get(orig_pool_name,
-                                                           ''),
-                    'wwn': volume.get('wwn'),
-                    'type': vol_type,
-                    'total_capacity': total_cap,
-                    'used_capacity': used_cap,
-                    'free_capacity': free_cap,
-                    'compressed': compressed,
-                    'deduplicated': deduplicated
-                }
-                volume_list.append(v)
+            v = {
+                'name': volume.get('name'),
+                'storage_id': self.storage_id,
+                'description': volume.get('comment'),
+                'status': status,
+                'native_volume_id': str(volume.get('id')),
+                'native_storage_pool_id': pool_ids.get(orig_pool_name,
+                                                       ''),
+                'wwn': volume.get('wwn'),
+                'type': vol_type,
+                'total_capacity': total_cap,
+                'used_capacity': used_cap,
+                'free_capacity': free_cap,
+                'compressed': compressed,
+                'deduplicated': deduplicated
+            }
+            volume_list.append(v)
         return volume_list
 
     def list_volumes(self, context):
@@ -203,13 +199,11 @@ class ComponentHandler():
             return self.handler_volume(volumes, pool_ids)
 
         except exception.DelfinException as e:
-            err_msg = "Failed to get list volumes from Hpe3parStor: %s" % \
-                      (e.msg)
+            err_msg = f"Failed to get list volumes from Hpe3parStor: {e.msg}"
             LOG.error(err_msg)
             raise e
         except Exception as e:
-            err_msg = "Failed to get list volumes from Hpe3parStor: %s" % \
-                      (six.text_type(e))
+            err_msg = f"Failed to get list volumes from Hpe3parStor: {six.text_type(e)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -230,9 +224,8 @@ class ComponentHandler():
                     cpu_info_keys = list(cpu_info_map.keys())
                     for cpu_key in cpu_info_keys:
                         if cpu_info:
-                            cpu_info = '%s%s' % (cpu_info, ',')
-                        cpu_info = '%s%s * %s MHz' % (
-                            cpu_info, cpu_info_map.get(cpu_key), cpu_key)
+                            cpu_info = f'{cpu_info},'
+                        cpu_info = f'{cpu_info}{cpu_info_map.get(cpu_key)} * {cpu_key} MHz'
                 soft_version = None
                 if node_version_map:
                     soft_version = node_version_map.get(node_id, '')
@@ -267,8 +260,7 @@ class ComponentHandler():
                 model = None
                 firmware = None
                 if disks_inventory_map:
-                    inventory_map = disks_inventory_map.get(disk_id)
-                    if inventory_map:
+                    if inventory_map := disks_inventory_map.get(disk_id):
                         serial_number = inventory_map.get('disk_serial')
                         manufacturer = inventory_map.get('disk_mfr')
                         model = inventory_map.get('disk_model')
@@ -327,31 +319,26 @@ class ComponentHandler():
                 if ports_connected_map:
                     rate = ports_connected_map.get(port_id, '')
                 if not ip_addr and ports_iscsi_map:
-                    iscsi_map = ports_iscsi_map.get(port_id)
-                    if iscsi_map:
+                    if iscsi_map := ports_iscsi_map.get(port_id):
                         ip_addr = iscsi_map.get('ipaddr')
                         ip_mask = iscsi_map.get('netmask/prefixlen')
                         rate = iscsi_map.get('rate')
                 if not ip_addr and ports_rcip_map:
-                    rcip_map = ports_rcip_map.get(port_id)
-                    if rcip_map:
+                    if rcip_map := ports_rcip_map.get(port_id):
                         ip_addr = rcip_map.get('ipaddr')
                         ip_mask = rcip_map.get('netmask')
                         rate = rcip_map.get('rate')
                 if not ip_addr and port_fs_map:
-                    fs_map = port_fs_map.get(port_id)
-                    if fs_map:
+                    if fs_map := port_fs_map.get(port_id):
                         ip_addr = fs_map.get('ipaddr')
                         ip_mask = fs_map.get('netmask')
                         rate = fs_map.get('rate')
                 if not rate and ports_fcoe_map:
-                    fcoe_map = ports_fcoe_map.get(port_id)
-                    if fcoe_map:
+                    if fcoe_map := ports_fcoe_map.get(port_id):
                         rate = fcoe_map.get('rate')
                 if ip_addr and ip_addr != '-':
                     pattern = re.compile(consts.IPV4_PATTERN)
-                    search_obj = pattern.search(ip_addr)
-                    if search_obj:
+                    if search_obj := pattern.search(ip_addr):
                         ipv4 = ip_addr
                         ipv4_mask = ip_mask
                     else:
@@ -392,18 +379,17 @@ class ComponentHandler():
     def parse_speed(self, speed_value):
         speed = 0
         try:
-            if speed_value == '' or speed_value == 'n/a':
+            if speed_value in ['', 'n/a']:
                 return None
-            speeds = re.findall("\\d+", speed_value)
-            if speeds:
+            if speeds := re.findall("\\d+", speed_value):
                 speed = int(speeds[0])
             if 'Gbps' in speed_value:
-                speed = speed * units.G
+                speed *= units.G
             elif 'Mbps' in speed_value:
                 speed = speed * units.M
             elif 'Kbps' in speed_value:
                 speed = speed * units.k
         except Exception as err:
-            err_msg = "analyse speed error: %s" % (six.text_type(err))
+            err_msg = f"analyse speed error: {six.text_type(err)}"
             LOG.error(err_msg)
         return speed

@@ -49,17 +49,16 @@ class VMAXClient(object):
             ver, self.uni_version = self.rest.get_uni_version()
             LOG.info('Connected to Unisphere Version: {0}'.format(ver))
         except exception.InvalidUsernameOrPassword as e:
-            msg = "Failed to connect VMAX. Reason: {}".format(e.msg)
+            msg = f"Failed to connect VMAX. Reason: {e.msg}"
             LOG.error(msg)
             raise e
         except (exception.SSLCertificateFailed,
                 exception.SSLHandshakeFailed) as e:
-            msg = ("Failed to connect to VMAX: {}".format(e))
+            msg = f"Failed to connect to VMAX: {e}"
             LOG.error(msg)
             raise
         except Exception as err:
-            msg = ("Failed to connect to VMAX. Host or Port is not correct: "
-                   "{}".format(err))
+            msg = f"Failed to connect to VMAX. Host or Port is not correct: {err}"
             LOG.error(msg)
             raise exception.InvalidIpOrPort()
 
@@ -68,7 +67,7 @@ class VMAXClient(object):
             raise exception.InvalidInput(msg)
 
         self.array_id = access_info.get('extra_attributes', {}). \
-            get('array_id', None)
+                get('array_id', None)
 
         try:
             # Get array details from unisphere
@@ -81,16 +80,14 @@ class VMAXClient(object):
                 if not self.array_id:
                     self.array_id = array['symmetrixId'][0]
                 elif self.array_id != array['symmetrixId'][0]:
-                    msg = "Invalid array_id. Expected id: {}". \
-                        format(array['symmetrixId'])
+                    msg = f"Invalid array_id. Expected id: {array['symmetrixId']}"
                     raise exception.InvalidInput(msg)
         except Exception:
             LOG.error("Failed to init_connection to VMAX")
             raise
 
         if not self.array_id:
-            msg = "Input array_id is missing. Supported ids: {}". \
-                format(array['symmetrixId'])
+            msg = f"Input array_id is missing. Supported ids: {array['symmetrixId']}"
             raise exception.InvalidInput(msg)
 
     def get_array_details(self):
@@ -123,7 +120,6 @@ class VMAXClient(object):
                 total_capacity = int(total_cap * units.Gi)
                 used_capacity = int(used_cap * units.Gi)
                 free_capacity = int(free_cap * units.Gi)
-                raw_capacity = int(total_raw * units.Gi)
                 subscribed_capacity = int(subscribed_cap * units.Gi)
 
             else:
@@ -138,11 +134,11 @@ class VMAXClient(object):
                 total_capacity = int(total_cap * units.Ti)
                 used_capacity = int(used_cap * units.Ti)
                 free_capacity = int(free_cap * units.Ti)
-                raw_capacity = int(total_raw * units.Gi)
                 subscribed_capacity = int(subscribed_cap * units.Ti)
 
+            raw_capacity = int(total_raw * units.Gi)
             return total_capacity, used_capacity, free_capacity,\
-                raw_capacity, subscribed_capacity
+                    raw_capacity, subscribed_capacity
 
         except Exception:
             LOG.error("Failed to get capacity from VMAX")
@@ -166,7 +162,7 @@ class VMAXClient(object):
                     total_cap = pool_info['total_usable_cap_gb'] * units.Gi
                     used_cap = pool_info['total_allocated_cap_gb'] * units.Gi
                     subscribed_cap = \
-                        pool_info['total_subscribed_cap_gb'] * units.Gi
+                            pool_info['total_subscribed_cap_gb'] * units.Gi
                 else:
                     srp_cap = pool_info['srp_capacity']
                     total_cap = srp_cap['usable_total_tb'] * units.Ti
@@ -180,11 +176,12 @@ class VMAXClient(object):
                     "description": "Dell EMC VMAX Pool",
                     "status": constants.StoragePoolStatus.NORMAL,
                     "storage_type": constants.StorageType.BLOCK,
-                    "total_capacity": int(total_cap),
-                    "used_capacity": int(used_cap),
+                    "total_capacity": total_cap,
+                    "used_capacity": used_cap,
                     "free_capacity": int(total_cap - used_cap),
-                    "subscribed_capacity": int(subscribed_cap),
+                    "subscribed_capacity": subscribed_cap,
                 }
+
 
                 pool_list.append(p)
 
@@ -234,7 +231,7 @@ class VMAXClient(object):
 
                 name = volume
                 if vol.get('volume_identifier'):
-                    name = volume + ':' + vol['volume_identifier']
+                    name = f'{volume}:' + vol['volume_identifier']
 
                 v = {
                     "name": name,
@@ -254,7 +251,7 @@ class VMAXClient(object):
                     sg_info = self.rest.get_storage_group(
                         self.array_id, self.uni_version, sg)
                     v['native_storage_pool_id'] = \
-                        sg_info.get('srp', default_srps[emulation_type])
+                            sg_info.get('srp', default_srps[emulation_type])
                     v['compressed'] = sg_info.get('compression', False)
                 else:
                     v['native_storage_pool_id'] = default_srps[emulation_type]
@@ -322,11 +319,11 @@ class VMAXClient(object):
                         director, port_key['portId'])['symmetrixPort']
 
                     connection_status = \
-                        constants.PortConnectionStatus.CONNECTED
+                            constants.PortConnectionStatus.CONNECTED
                     if port_info.get('port_status',
                                      '').upper().find('OFF') != -1:
                         connection_status = \
-                            constants.PortConnectionStatus.DISCONNECTED
+                                constants.PortConnectionStatus.DISCONNECTED
 
                     port_type = constants.PortType.OTHER
                     if port_info.get('type', '').upper().find('FIBRE') != -1:
@@ -407,10 +404,10 @@ class VMAXClient(object):
             perf_list = self.rest.get_pool_metrics(
                 self.array_id, metrics, start_time, end_time)
 
-            metrics_array = perf_utils.construct_metrics(
-                storage_id, consts.POOL_METRICS, consts.POOL_CAP, perf_list)
+            return perf_utils.construct_metrics(
+                storage_id, consts.POOL_METRICS, consts.POOL_CAP, perf_list
+            )
 
-            return metrics_array
         except Exception:
             LOG.error("Failed to get STORAGE POOL metrics for VMAX")
             raise
@@ -419,7 +416,7 @@ class VMAXClient(object):
         """Get performance metrics."""
         try:
             be_perf_list, fe_perf_list, rdf_perf_list = \
-                self.rest.get_port_metrics(self.array_id,
+                    self.rest.get_port_metrics(self.array_id,
                                            metrics, start_time, end_time)
 
             metrics_array = []
@@ -447,7 +444,7 @@ class VMAXClient(object):
         """Get performance metrics."""
         try:
             be_perf_list, fe_perf_list, rdf_perf_list = self.rest.\
-                get_controller_metrics(self.array_id,
+                    get_controller_metrics(self.array_id,
                                        metrics, start_time, end_time)
 
             metrics_array = []

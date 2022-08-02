@@ -32,7 +32,7 @@ class VolumeGroupController(wsgi.Controller):
     def show(self, req, id):
         ctxt = req.environ['delfin.context']
         query_params = {"storage_id": id}
-        query_params.update(req.GET)
+        query_params |= req.GET
         # Update options  other than filters
         sort_keys, sort_dirs = api_utils.get_sort_params(query_params)
         marker, limit, offset = api_utils.get_pagination_params(query_params)
@@ -52,10 +52,7 @@ class VolumeGroupController(wsgi.Controller):
             volumes = db.vol_grp_vol_rels_get_all(
                 ctxt, filters=params)
 
-            native_volume_id_list = []
-            for volume in volumes:
-                native_volume_id_list.append(volume['native_volume_id'])
-
+            native_volume_id_list = [volume['native_volume_id'] for volume in volumes]
             volume_group['volumes'] = native_volume_id_list
 
         return volume_group_view.build_volume_groups(volume_groups)

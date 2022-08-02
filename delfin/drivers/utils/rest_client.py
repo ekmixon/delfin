@@ -38,8 +38,7 @@ class RestClient(object):
         self.rest_port = rest_access.get('port')
         self.rest_username = rest_access.get('username')
         self.rest_password = rest_access.get('password')
-        self.san_address = 'https://%s:%s' % \
-                           (self.rest_host, str(self.rest_port))
+        self.san_address = f'https://{self.rest_host}:{str(self.rest_port)}'
         self.session = None
         self.device_id = None
 
@@ -66,9 +65,8 @@ class RestClient(object):
 
     def do_call(self, url, data, method,
                 calltimeout=consts.SOCKET_TIMEOUT):
-        if 'http' not in url:
-            if self.san_address:
-                url = '%s%s' % (self.san_address, url)
+        if 'http' not in url and self.san_address:
+            url = f'{self.san_address}{url}'
 
         kwargs = {'timeout': calltimeout}
         if data:
@@ -84,13 +82,13 @@ class RestClient(object):
         try:
             res = func(url, **kwargs)
         except requests.exceptions.ConnectTimeout as ct:
-            LOG.error('Connect Timeout err: {}'.format(ct))
+            LOG.error(f'Connect Timeout err: {ct}')
             raise exception.InvalidIpOrPort()
         except requests.exceptions.ReadTimeout as rt:
-            LOG.error('Read timed out err: {}'.format(rt))
+            LOG.error(f'Read timed out err: {rt}')
             raise exception.StorageBackendException(six.text_type(rt))
         except requests.exceptions.SSLError as e:
-            LOG.error('SSLError for %s %s' % (method, url))
+            LOG.error(f'SSLError for {method} {url}')
             err_str = six.text_type(e)
             if 'certificate verify failed' in err_str:
                 raise exception.SSLCertificateFailed()
@@ -102,7 +100,7 @@ class RestClient(object):
             if 'WSAETIMEDOUT' in str(err):
                 raise exception.ConnectTimeout()
             elif 'Failed to establish a new connection' in str(err):
-                LOG.error('Failed to establish: {}'.format(err))
+                LOG.error(f'Failed to establish: {err}')
                 raise exception.InvalidIpOrPort()
             elif 'Read timed out' in str(err):
                 raise exception.StorageBackendException(six.text_type(err))

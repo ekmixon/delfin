@@ -83,18 +83,19 @@ class AlertHandler(object):
 
         for attr in AlertHandler._mandatory_alert_attributes:
             if not alert.get(attr):
-                msg = "Mandatory information %s missing in alert message. " \
-                      % attr
+                msg = f"Mandatory information {attr} missing in alert message. "
                 raise exception.InvalidInput(msg)
 
         try:
-            alert_model = dict()
-            # These information are sourced from device registration info
-            alert_model['alert_id'] = alert['hwIsmReportingAlarmAlarmID']
-            alert_model['alert_name'] = alert['hwIsmReportingAlarmFaultTitle']
-            alert_model['severity'] = AlertHandler.SEVERITY_MAP.get(
-                alert['hwIsmReportingAlarmFaultLevel'],
-                constants.Severity.NOT_SPECIFIED)
+            alert_model = {
+                'alert_id': alert['hwIsmReportingAlarmAlarmID'],
+                'alert_name': alert['hwIsmReportingAlarmFaultTitle'],
+                'severity': AlertHandler.SEVERITY_MAP.get(
+                    alert['hwIsmReportingAlarmFaultLevel'],
+                    constants.Severity.NOT_SPECIFIED,
+                ),
+            }
+
             alert_model['category'] = AlertHandler.CATEGORY_MAP.get(
                 alert['hwIsmReportingAlarmFaultCategory'],
                 constants.Category.NOT_SPECIFIED)
@@ -102,7 +103,7 @@ class AlertHandler(object):
                 alert['hwIsmReportingAlarmFaultType'],
                 constants.EventType.NOT_SPECIFIED)
             alert_model['sequence_number'] \
-                = alert['hwIsmReportingAlarmSerialNo']
+                    = alert['hwIsmReportingAlarmSerialNo']
             occur_time = datetime.strptime(
                 alert['hwIsmReportingAlarmFaultTime'],
                 AlertHandler.TIME_PATTERN)
@@ -122,11 +123,11 @@ class AlertHandler(object):
 
             alert_model['resource_type'] = constants.DEFAULT_RESOURCE_TYPE
             alert_model['location'] = 'Node code=' \
-                                      + alert['hwIsmReportingAlarmNodeCode']
+                                          + alert['hwIsmReportingAlarmNodeCode']
 
             if alert.get('hwIsmReportingAlarmLocationInfo'):
                 alert_model['location'] \
-                    = alert_model['location'] + ',' + alert[
+                        = alert_model['location'] + ',' + alert[
                     'hwIsmReportingAlarmLocationInfo']
 
             return alert_model
@@ -148,11 +149,14 @@ class AlertHandler(object):
                                                          occur_time):
                     continue
 
-                alert_model = dict()
-                alert_model['alert_id'] = alert['eventID']
-                alert_model['alert_name'] = alert['name']
-                alert_model['severity'] = self.QUERY_ALERTS_SEVERITY_MAP.get(
-                    alert['level'], constants.Severity.NOT_SPECIFIED)
+                alert_model = {
+                    'alert_id': alert['eventID'],
+                    'alert_name': alert['name'],
+                    'severity': self.QUERY_ALERTS_SEVERITY_MAP.get(
+                        alert['level'], constants.Severity.NOT_SPECIFIED
+                    ),
+                }
+
                 alert_model['category'] = self.QUERY_ALERTS_CATEGORY_MAP.get(
                     alert['eventType'], constants.Category.NOT_SPECIFIED)
                 alert_model['type'] = constants.EventType.NOT_SPECIFIED

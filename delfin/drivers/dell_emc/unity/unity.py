@@ -130,34 +130,37 @@ class UnityStorDriver(driver.StorageDriver):
         return pool_list
 
     def volume_handler(self, volumes, volume_list):
-        if volumes is not None:
-            vol_entries = volumes.get('entries')
-            for volume in vol_entries:
-                content = volume.get('content', {})
-                total = content.get('sizeTotal')
-                used = content.get('sizeAllocated')
-                vol_type = constants.VolumeType.THICK
-                if content.get('isThinEnabled') is True:
-                    vol_type = constants.VolumeType.THIN
-                health_value = content.get('health').get('value')
-                if health_value in UnityStorDriver.HEALTH_OK:
-                    status = constants.StorageStatus.NORMAL
-                else:
-                    status = constants.StorageStatus.ABNORMAL
-                volume_result = {
-                    'name': content.get('name'),
-                    'storage_id': self.storage_id,
-                    'description': content.get('description'),
-                    'status': status,
-                    'native_volume_id': str(content.get('id')),
-                    'native_storage_pool_id': content.get('pool').get('id'),
-                    'wwn': content.get('wwn'),
-                    'type': vol_type,
-                    'total_capacity': int(total),
-                    'used_capacity': int(used),
-                    'free_capacity': int(total - used)
-                }
-                volume_list.append(volume_result)
+        if volumes is None:
+            return
+        vol_entries = volumes.get('entries')
+        for volume in vol_entries:
+            content = volume.get('content', {})
+            total = content.get('sizeTotal')
+            used = content.get('sizeAllocated')
+            vol_type = constants.VolumeType.THICK
+            if content.get('isThinEnabled') is True:
+                vol_type = constants.VolumeType.THIN
+            health_value = content.get('health').get('value')
+            status = (
+                constants.StorageStatus.NORMAL
+                if health_value in UnityStorDriver.HEALTH_OK
+                else constants.StorageStatus.ABNORMAL
+            )
+
+            volume_result = {
+                'name': content.get('name'),
+                'storage_id': self.storage_id,
+                'description': content.get('description'),
+                'status': status,
+                'native_volume_id': str(content.get('id')),
+                'native_storage_pool_id': content.get('pool').get('id'),
+                'wwn': content.get('wwn'),
+                'type': vol_type,
+                'total_capacity': int(total),
+                'used_capacity': int(used),
+                'free_capacity': int(total - used)
+            }
+            volume_list.append(volume_result)
 
     def list_volumes(self, context):
         page_number = 1
@@ -183,7 +186,7 @@ class UnityStorDriver(driver.StorageDriver):
             if len(alert_list['entries']) < 1:
                 break
             alert_handler.AlertHandler() \
-                .parse_queried_alerts(alert_model_list, alert_list, query_para)
+                    .parse_queried_alerts(alert_model_list, alert_list, query_para)
             page_number = page_number + 1
 
         return alert_model_list
@@ -215,17 +218,14 @@ class UnityStorDriver(driver.StorageDriver):
                     controller_list.append(controller_result)
             return controller_list
         except Exception as err:
-            err_msg = "Failed to get controller attributes from Unity: %s" %\
-                      (six.text_type(err))
+            err_msg = f"Failed to get controller attributes from Unity: {six.text_type(err)}"
+
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
     @staticmethod
     def handle_port_ip(ip, result):
-        if ip is None:
-            ip = result
-        else:
-            ip = '%s;%s' % (ip, result)
+        ip = result if ip is None else f'{ip};{result}'
         return ip
 
     def get_eth_ports(self):
@@ -244,8 +244,8 @@ class UnityStorDriver(driver.StorageDriver):
                 else:
                     status = constants.PortHealthStatus.ABNORMAL
                 conn_status = constants.PortConnectionStatus.CONNECTED if \
-                    content.get('isLinkUp') is True \
-                    else constants.PortConnectionStatus.DISCONNECTED
+                        content.get('isLinkUp') is True \
+                        else constants.PortConnectionStatus.DISCONNECTED
                 ipv4 = None
                 ipv4_mask = None
                 ipv6 = None
@@ -327,8 +327,7 @@ class UnityStorDriver(driver.StorageDriver):
             port_list.extend(self.get_fc_ports())
             return port_list
         except Exception as err:
-            err_msg = "Failed to get ports attributes from Unity: %s" % \
-                      (six.text_type(err))
+            err_msg = f"Failed to get ports attributes from Unity: {six.text_type(err)}"
             raise exception.InvalidResults(err_msg)
 
     def list_disks(self, context):
@@ -367,8 +366,7 @@ class UnityStorDriver(driver.StorageDriver):
             return disk_list
 
         except Exception as err:
-            err_msg = "Failed to get disk attributes from Unity: %s" % \
-                      (six.text_type(err))
+            err_msg = f"Failed to get disk attributes from Unity: {six.text_type(err)}"
             raise exception.InvalidResults(err_msg)
 
     def list_filesystems(self, context):
@@ -393,7 +391,7 @@ class UnityStorDriver(driver.StorageDriver):
                         content.get('flrVersion'),
                         constants.WORMType.NON_WORM)
                     security_model = \
-                        UnityStorDriver.FILESYSTEM_SECURITY_MAP.get(
+                            UnityStorDriver.FILESYSTEM_SECURITY_MAP.get(
                             content.get('accessPolicy'),
                             constants.NASSecurityMode.NATIVE
                         )
@@ -414,8 +412,8 @@ class UnityStorDriver(driver.StorageDriver):
                     fs_list.append(fs)
             return fs_list
         except Exception as err:
-            err_msg = "Failed to get filesystem attributes from Unity: %s"\
-                      % (six.text_type(err))
+            err_msg = f"Failed to get filesystem attributes from Unity: {six.text_type(err)}"
+
             raise exception.InvalidResults(err_msg)
 
     def list_qtrees(self, context):
@@ -439,8 +437,7 @@ class UnityStorDriver(driver.StorageDriver):
                     qt_list.append(qt)
             return qt_list
         except Exception as err:
-            err_msg = "Failed to get qtree attributes from Unity: %s"\
-                      % (six.text_type(err))
+            err_msg = f"Failed to get qtree attributes from Unity: {six.text_type(err)}"
             raise exception.InvalidResults(err_msg)
 
     def get_share_qtree(self, path, qtree_list):
@@ -480,8 +477,12 @@ class UnityStorDriver(driver.StorageDriver):
                                 'filesystem', {}).get('id'):
                             file_name = file_content.get('name')
                             break
-                    path = '/%s%s' % (file_name, content.get('path')) if \
-                        file_name != '' else content.get('path')
+                    path = (
+                        f"/{file_name}{content.get('path')}"
+                        if file_name != ''
+                        else content.get('path')
+                    )
+
                     fs = {
                         'name': content.get('name'),
                         'storage_id': self.storage_id,
@@ -496,8 +497,7 @@ class UnityStorDriver(driver.StorageDriver):
                     share_list.append(fs)
             return share_list
         except Exception as err:
-            err_msg = "Failed to get share attributes from Unity: %s"\
-                      % (six.text_type(err))
+            err_msg = f"Failed to get share attributes from Unity: {six.text_type(err)}"
             raise exception.InvalidResults(err_msg)
 
     def list_shares(self, context):
@@ -509,8 +509,7 @@ class UnityStorDriver(driver.StorageDriver):
             share_list.extend(self.get_share('nfs', qtrees, filesystems))
             return share_list
         except Exception as err:
-            err_msg = "Failed to get shares attributes from Unity: %s"\
-                      % (six.text_type(err))
+            err_msg = f"Failed to get shares attributes from Unity: {six.text_type(err)}"
             raise exception.InvalidResults(err_msg)
 
     def get_tree_quotas(self):
@@ -569,8 +568,7 @@ class UnityStorDriver(driver.StorageDriver):
             quotas_list.extend(self.get_user_quotas())
             return quotas_list
         except Exception as err:
-            err_msg = "Failed to get quotas attributes from Unity: %s"\
-                      % (six.text_type(err))
+            err_msg = f"Failed to get quotas attributes from Unity: {six.text_type(err)}"
             raise exception.InvalidResults(err_msg)
 
     def add_trap_config(self, context, trap_config):

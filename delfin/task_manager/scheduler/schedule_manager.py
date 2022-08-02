@@ -30,8 +30,8 @@ from delfin.task_manager.scheduler.schedulers.telemetry.telemetry_job import \
 LOG = log.getLogger(__name__)
 
 SCHEDULER_BOOT_JOBS = [
-    TelemetryJob.__module__ + '.' + TelemetryJob.__name__,
-    FailedTelemetryJob.__module__ + '.' + FailedTelemetryJob.__name__
+    f'{TelemetryJob.__module__}.{TelemetryJob.__name__}',
+    f'{FailedTelemetryJob.__module__}.{FailedTelemetryJob.__name__}',
 ]
 
 
@@ -43,7 +43,7 @@ class SchedulerManager(object):
         self.scheduler = scheduler
         self.scheduler_started = False
 
-        self.boot_jobs = dict()
+        self.boot_jobs = {}
         self.boot_jobs_scheduled = False
         self.ctx = context.get_admin_context()
 

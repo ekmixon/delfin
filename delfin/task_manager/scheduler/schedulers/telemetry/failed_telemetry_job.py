@@ -72,7 +72,7 @@ class FailedTelemetryJob(object):
 
             for failed_task in failed_tasks:
                 failed_task_id = failed_task[FailedTask.id.name]
-                LOG.info("Processing failed task : %s" % failed_task_id)
+                LOG.info(f"Processing failed task : {failed_task_id}")
 
                 # Get failed jobs, if retry count has reached max,
                 # remove job and delete db entry
@@ -80,8 +80,8 @@ class FailedTelemetryJob(object):
                 result = failed_task[FailedTask.result.name]
                 job_id = failed_task[FailedTask.job_id.name]
                 if retry_count >= \
-                        TelemetryCollection.MAX_FAILED_JOB_RETRY_COUNT or \
-                        result == TelemetryJobStatus.FAILED_JOB_STATUS_SUCCESS:
+                            TelemetryCollection.MAX_FAILED_JOB_RETRY_COUNT or \
+                            result == TelemetryJobStatus.FAILED_JOB_STATUS_SUCCESS:
                     LOG.info("Exiting Failure task processing for task [%d] "
                              "with result [%s] and retry count [%d] "
                              % (failed_task_id, result, retry_count))
@@ -112,7 +112,7 @@ class FailedTelemetryJob(object):
                 collection_class = importutils.import_class(
                     failed_task[FailedTask.method.name])
                 instance = \
-                    collection_class.get_instance(self.ctx, failed_task_id)
+                        collection_class.get_instance(self.ctx, failed_task_id)
                 self.scheduler.add_job(
                     instance, 'interval',
                     seconds=failed_task[FailedTask.interval.name],

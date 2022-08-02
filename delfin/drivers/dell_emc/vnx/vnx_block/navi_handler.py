@@ -52,7 +52,7 @@ class NaviHandler(object):
             'host': host_ip, 'timeout': timeout}
         if self.navi_port:
             command_str = '%s -port %d' % (command_str, self.navi_port)
-        command_str = '%s %s' % (command_str, sub_command)
+        command_str = f'{command_str} {sub_command}'
         return command_str
 
     def login(self, host_ip=None):
@@ -66,16 +66,14 @@ class NaviHandler(object):
         if self.verify:
             accept_cer = consts.CER_REJECT
             self.remove_cer(host_ip=host_ip)
-            cer_add_command = '%s %s' % (consts.CER_ADD_API, self.verify)
+            cer_add_command = f'{consts.CER_ADD_API} {self.verify}'
             NaviClient.exec(cer_add_command.split())
         command_str = \
-            self.get_cli_command_str(host_ip=host_ip,
+                self.get_cli_command_str(host_ip=host_ip,
                                      sub_command=consts.GET_AGENT_API,
                                      timeout=consts.LOGIN_SOCKET_TIMEOUT)
-        result = NaviClient.exec(command_str.split(), stdin_value=accept_cer)
-        if result:
-            agent_model = self.cli_res_to_dict(result)
-            if agent_model:
+        if result := NaviClient.exec(command_str.split(), stdin_value=accept_cer):
+            if agent_model := self.cli_res_to_dict(result):
                 version = agent_model.get("revision")
         return version
 
@@ -85,10 +83,8 @@ class NaviHandler(object):
         cer_list_str = NaviClient.exec(consts.CER_LIST_API.split())
         cer_map = self.analyse_cer(cer_list_str, host_ip)
         if cer_map.get(host_ip):
-            cer_remove_command = '%s -issuer %s -serialNumber %s' % (
-                consts.CER_REMOVE_API,
-                cer_map.get(host_ip).get('issuer'),
-                cer_map.get(host_ip).get('serial#'))
+            cer_remove_command = f"{consts.CER_REMOVE_API} -issuer {cer_map.get(host_ip).get('issuer')} -serialNumber {cer_map.get(host_ip).get('serial#')}"
+
             NaviClient.exec(cer_remove_command.split())
 
     def get_agent(self):
@@ -151,13 +147,13 @@ class NaviHandler(object):
         # Execute commands to query data and analyze
         try:
             command_str = self.get_cli_command_str(sub_command=sub_command)
-            resource_info = self.navi_exe(command_str.split())
-            return_value = None
-            if resource_info:
+            if resource_info := self.navi_exe(command_str.split()):
                 return_value = analyse_type(resource_info)
+            else:
+                return_value = None
         except Exception as e:
-            err_msg = "Failed to get resources info from %s: %s" \
-                      % (sub_command, six.text_type(e))
+            err_msg = f"Failed to get resources info from {sub_command}: {six.text_type(e)}"
+
             LOG.error(err_msg)
             raise e
         return return_value
@@ -167,8 +163,7 @@ class NaviHandler(object):
         try:
             obj_infos = resource_info.split('\n')
             for obj_info in obj_infos:
-                str_line = obj_info.strip()
-                if str_line:
+                if str_line := obj_info.strip():
                     if ':' in str_line:
                         str_info = self.split_str_by_colon(str_line)
                         obj_model = self.str_info_to_model(str_info, obj_model)
@@ -184,8 +179,7 @@ class NaviHandler(object):
         try:
             obj_infos = resource_info.split('\n')
             for obj_info in obj_infos:
-                str_line = obj_info.strip()
-                if str_line:
+                if str_line := obj_info.strip():
                     if consts.DISK_ID_KEY in str_line:
                         str_line = str_line.replace(consts.DISK_ID_KEY,
                                                     "disk id:")
@@ -240,8 +234,7 @@ class NaviHandler(object):
         try:
             obj_infos = resource_info.split('\n')
             for obj_info in obj_infos:
-                str_line = obj_info.strip()
-                if str_line:
+                if str_line := obj_info.strip():
                     if ':' not in str_line:
                         obj_model['sp_name'] = str_line
                     else:
@@ -268,17 +261,17 @@ class NaviHandler(object):
             spport_infos = resource_info.split(consts.SPPORT_KEY)[1]
             obj_infos = spport_infos.split('\n')
             for obj_info in obj_infos:
-                str_line = obj_info.strip()
-                if str_line:
+                if str_line := obj_info.strip():
                     if ':' in str_line:
                         str_info = self.split_str_by_colon(str_line)
                         obj_model = self.str_info_to_model(str_info, obj_model)
                         previous_line = str_line
-                    else:
-                        if 'Available Speeds:' in previous_line:
-                            if 'Auto' not in str_line \
-                                    and str_line > max_speed_str:
-                                max_speed_str = str_line
+                    elif (
+                        'Available Speeds:' in previous_line
+                        and 'Auto' not in str_line
+                        and str_line > max_speed_str
+                    ):
+                        max_speed_str = str_line
                 else:
                     if max_speed_str:
                         obj_model['max_speed'] = max_speed_str
@@ -305,8 +298,7 @@ class NaviHandler(object):
         try:
             obj_infos = resource_info.split('\n')
             for obj_info in obj_infos:
-                str_line = obj_info.strip()
-                if str_line:
+                if str_line := obj_info.strip():
                     if 'Bus ' in str_line and ':' not in str_line:
                         if max_speed_str:
                             obj_model['max_speed'] = max_speed_str
@@ -324,11 +316,12 @@ class NaviHandler(object):
                             sp_list.append(
                                 str_info[0].replace('_connector_state', ''))
                             obj_model['sps'] = sp_list
-                    else:
-                        if 'Available Speeds:' in previous_line:
-                            if 'Auto' not in str_line \
-                                    and str_line > max_speed_str:
-                                max_speed_str = str_line
+                    elif (
+                        'Available Speeds:' in previous_line
+                        and 'Auto' not in str_line
+                        and str_line > max_speed_str
+                    ):
+                        max_speed_str = str_line
             if max_speed_str:
                 obj_model['max_speed'] = max_speed_str
             obj_list = self.add_model_to_list(obj_model, obj_list)
@@ -345,8 +338,7 @@ class NaviHandler(object):
             sp = ''
             port_id = ''
             for obj_info in obj_infos:
-                str_line = obj_info.strip()
-                if str_line:
+                if str_line := obj_info.strip():
                     if 'SP ID:' in str_line:
                         str_info = self.split_str_by_colon(str_line)
                         sp = str_info[1]
@@ -355,7 +347,7 @@ class NaviHandler(object):
                         port_id = str_info[1]
                     if 'Port State:' in str_line:
                         str_info = self.split_str_by_colon(str_line)
-                        obj_model[sp + '_' + port_id] = str_info[1]
+                        obj_model[f'{sp}_{port_id}'] = str_info[1]
         except Exception as e:
             err_msg = "arrange bus port state info error: %s", six.text_type(e)
             LOG.error(err_msg)
@@ -368,8 +360,7 @@ class NaviHandler(object):
         try:
             obj_infos = resource_info.split('\n')
             for obj_info in obj_infos:
-                str_line = obj_info.strip()
-                if str_line:
+                if str_line := obj_info.strip():
                     if ':' in str_line:
                         str_info = self.split_str_by_colon(str_line)
                         obj_model = self.str_info_to_model(str_info, obj_model)
@@ -388,8 +379,7 @@ class NaviHandler(object):
             obj_list = []
             obj_infos = resource_info.split('\n')
             for obj_info in obj_infos:
-                str_line = obj_info.strip()
-                if str_line:
+                if str_line := obj_info.strip():
                     if ':' in str_line:
                         str_info = self.split_str_by_colon(str_line)
                         obj_model = self.str_info_to_model(str_info, obj_model)
@@ -398,8 +388,7 @@ class NaviHandler(object):
                     obj_model = {}
             for config in obj_list:
                 if config.get('i/o_module_slot'):
-                    key = '%s_%s' % (
-                        config.get('sp_id'), config.get('i/o_module_slot'))
+                    key = f"{config.get('sp_id')}_{config.get('i/o_module_slot')}"
                     obj_model[key] = config.get('i/o_module_type').replace(
                         ' Channel', '')
         except Exception as e:
@@ -414,10 +403,9 @@ class NaviHandler(object):
             obj_list = []
             obj_infos = resource_info.split('\n')
             for obj_info in obj_infos:
-                str_line = obj_info.strip()
-                if str_line:
+                if str_line := obj_info.strip():
                     if 'CPU Module' in str_line:
-                        str_line = '%s:True' % str_line
+                        str_line = f'{str_line}:True'
                     str_info = self.split_str_by_colon(str_line)
                     obj_model = self.str_info_to_model(str_info, obj_model)
                 else:
@@ -440,13 +428,12 @@ class NaviHandler(object):
         try:
             obj_infos = resource_info.split('\n')
             for obj_info in obj_infos:
-                str_line = obj_info.strip()
-                if str_line:
+                if str_line := obj_info.strip():
                     if str_line.startswith('Bus '):
-                        disk_name = 'disk_name:%s' % str_line
+                        disk_name = f'disk_name:{str_line}'
                         str_info = self.split_str_by_colon(disk_name)
                         obj_model = self.str_info_to_model(str_info, obj_model)
-                        str_line = "disk id:%s" % (str_line.replace(' ', ''))
+                        str_line = f"disk id:{str_line.replace(' ', '')}"
                     if ':' not in str_line:
                         continue
                     str_info = self.split_str_by_colon(str_line)
@@ -532,13 +519,11 @@ class NaviHandler(object):
                 str_line = obj_info.strip()
                 if str_line and consts.CER_SEPARATE_KEY not in str_line:
                     str_info = self.split_str_by_colon(str_line)
-                    if str_info[0] == 'issuer' and host_ip not in str_info[1]:
-                        continue
-                    obj_model[str_info[0]] = str_info[1]
-                else:
-                    if obj_model and obj_model.get('issuer'):
-                        cer_map[host_ip] = obj_model
-                        break
+                    if str_info[0] != 'issuer' or host_ip in str_info[1]:
+                        obj_model[str_info[0]] = str_info[1]
+                elif obj_model and obj_model.get('issuer'):
+                    cer_map[host_ip] = obj_model
+                    break
         except Exception as e:
             err_msg = "arrange cer info error: %s", six.text_type(e)
             LOG.error(err_msg)
@@ -585,9 +570,7 @@ class NaviHandler(object):
         self.session_lock.acquire()
         try:
             if command_str:
-                accept_cer = consts.CER_STORE
-                if self.verify:
-                    accept_cer = consts.CER_REJECT
+                accept_cer = consts.CER_REJECT if self.verify else consts.CER_STORE
                 result = NaviClient.exec(command_str, stdin_value=accept_cer)
                 return result
         except exception.SSLCertificateFailed as e:
@@ -601,7 +584,7 @@ class NaviHandler(object):
             result = NaviClient.exec(command_str)
             return result
         except Exception as e:
-            err_msg = "naviseccli exec error: %s" % (six.text_type(e))
+            err_msg = f"naviseccli exec error: {six.text_type(e)}"
             LOG.error(err_msg)
             raise e
         finally:

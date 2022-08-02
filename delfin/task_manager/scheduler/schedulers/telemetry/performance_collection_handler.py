@@ -65,18 +65,24 @@ class PerformanceCollectionHandler(object):
         start_time = None
         end_time = None
         try:
-            LOG.debug('Collecting performance metrics for task id: %s'
-                      % self.task_id)
+            LOG.debug(f'Collecting performance metrics for task id: {self.task_id}')
             current_time = int(datetime.now().timestamp())
 
             # Times are epoch time in milliseconds
             end_time = current_time * 1000
             start_time = end_time - (self.interval * 1000)
-            status = self.task_rpcapi. \
-                collect_telemetry(self.ctx, self.storage_id,
-                                  telemetry.TelemetryTask.__module__ + '.' +
-                                  'PerformanceCollectionTask', self.args,
-                                  start_time, end_time)
+            status = self.task_rpcapi.collect_telemetry(
+                self.ctx,
+                self.storage_id,
+                (
+                    f'{telemetry.TelemetryTask.__module__}.'
+                    + 'PerformanceCollectionTask'
+                ),
+                self.args,
+                start_time,
+                end_time,
+            )
+
 
             db.task_update(self.ctx, self.task_id,
                            {'last_run_time': current_time})

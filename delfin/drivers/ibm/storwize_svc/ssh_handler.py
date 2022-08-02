@@ -70,7 +70,6 @@ class SSHHandler(object):
     @staticmethod
     def parse_alert(alert):
         try:
-            alert_model = dict()
             alert_name = SSHHandler.handle_split(alert.get(
                 SSHHandler.OID_ERR_ID), ':', 1)
             error_info = SSHHandler.handle_split(alert.get(
@@ -80,15 +79,19 @@ class SSHHandler(object):
                 alert.get(SSHHandler.OID_SEVERITY),
                 constants.Severity.INFORMATIONAL
             )
-            alert_model['alert_id'] = str(alert_id)
-            alert_model['alert_name'] = alert_name
-            alert_model['severity'] = severity
-            alert_model['category'] = constants.Category.FAULT
-            alert_model['type'] = constants.EventType.EQUIPMENT_ALARM
-            alert_model['sequence_number'] = SSHHandler. \
-                handle_split(alert.get(SSHHandler.OID_SEQ_NUMBER), '=', 1)
+            alert_model = {
+                'alert_id': str(alert_id),
+                'alert_name': alert_name,
+                'severity': severity,
+                'category': constants.Category.FAULT,
+                'type': constants.EventType.EQUIPMENT_ALARM,
+                'sequence_number': SSHHandler.handle_split(
+                    alert.get(SSHHandler.OID_SEQ_NUMBER), '=', 1
+                ),
+            }
+
             timestamp = SSHHandler. \
-                handle_split(alert.get(SSHHandler.OID_LAST_TIME), '=', 1)
+                    handle_split(alert.get(SSHHandler.OID_LAST_TIME), '=', 1)
             time_type = '%a %b %d %H:%M:%S %Y'
             occur_time = int(time.mktime(time.strptime(
                 timestamp,
@@ -114,8 +117,7 @@ class SSHHandler(object):
                 if 'is not a recognized command' in result:
                     raise exception.InvalidIpOrPort()
         except Exception as e:
-            LOG.error("Failed to login ibm storwize_svc %s" %
-                      (six.text_type(e)))
+            LOG.error(f"Failed to login ibm storwize_svc {six.text_type(e)}")
             raise e
 
     @staticmethod
@@ -126,10 +128,10 @@ class SSHHandler(object):
             if command_str is not None and ssh is not None:
                 stdin, stdout, stderr = ssh.exec_command(command_str)
                 res, err = stdout.read(), stderr.read()
-                re = res if res else err
+                re = res or err
                 result = re.decode()
         except paramiko.AuthenticationException as ae:
-            LOG.error('doexec Authentication error:{}'.format(ae))
+            LOG.error(f'doexec Authentication error:{ae}')
             raise exception.InvalidUsernameOrPassword()
         except Exception as e:
             err = six.text_type(e)
@@ -137,7 +139,7 @@ class SSHHandler(object):
             if 'timed out' in err:
                 raise exception.SSHConnectTimeout()
             elif 'No authentication methods available' in err \
-                    or 'Authentication failed' in err:
+                        or 'Authentication failed' in err:
                 raise exception.InvalidUsernameOrPassword()
             elif 'not a valid RSA private key file' in err:
                 raise exception.InvalidPrivateKey()
@@ -151,8 +153,7 @@ class SSHHandler(object):
                 ssh_info = SSHHandler.do_exec(command, ssh)
             return ssh_info
         except Exception as e:
-            msg = "Failed to ssh ibm storwize_svc %s: %s" % \
-                  (command, six.text_type(e))
+            msg = f"Failed to ssh ibm storwize_svc {command}: {six.text_type(e)}"
             raise exception.SSHException(msg)
 
     def change_capacity_to_bytes(self, unit):
@@ -187,7 +188,7 @@ class SSHHandler(object):
             self.handle_detail(system_info, storage_map, split=' ')
             serial_number = storage_map.get('id')
             status = 'normal' if storage_map.get('statistics_status') == 'on' \
-                else 'offline'
+                    else 'offline'
             location = storage_map.get('location')
             free_capacity = self.parse_string(storage_map.get(
                 'total_free_space'))
@@ -200,7 +201,7 @@ class SSHHandler(object):
             firmware_version = ''
             if storage_map.get('code_level') is not None:
                 firmware_version = storage_map.get('code_level').split(' ')[0]
-            s = {
+            return {
                 'name': storage_map.get('name'),
                 'vendor': 'IBM',
                 'model': storage_map.get('product_name'),
@@ -212,15 +213,15 @@ class SSHHandler(object):
                 'raw_capacity': int(raw_capacity),
                 'subscribed_capacity': int(subscribed_capacity),
                 'used_capacity': int(used_capacity),
-                'free_capacity': int(free_capacity)
+                'free_capacity': int(free_capacity),
             }
-            return s
+
         except exception.DelfinException as e:
-            err_msg = "Failed to get storage: %s" % (six.text_type(e.msg))
+            err_msg = f"Failed to get storage: {six.text_type(e.msg)}"
             LOG.error(err_msg)
             raise e
         except Exception as err:
-            err_msg = "Failed to get storage: %s" % (six.text_type(err))
+            err_msg = f"Failed to get storage: {six.text_type(err)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -246,12 +247,12 @@ class SSHHandler(object):
 
                 pool_str = ' '.join(pool_res[i].split())
                 strinfo = pool_str.split(' ')
-                detail_command = 'lsmdiskgrp %s' % strinfo[0]
+                detail_command = f'lsmdiskgrp {strinfo[0]}'
                 deltail_info = self.exec_ssh_command(detail_command)
                 pool_map = {}
                 self.handle_detail(deltail_info, pool_map, split=' ')
                 status = 'normal' if pool_map.get('status') == 'online' \
-                    else 'offline'
+                        else 'offline'
                 total_cap = self.parse_string(pool_map.get('capacity'))
                 free_cap = self.parse_string(pool_map.get('free_capacity'))
                 used_cap = self.parse_string(pool_map.get('used_capacity'))
@@ -273,11 +274,11 @@ class SSHHandler(object):
 
             return pool_list
         except exception.DelfinException as e:
-            err_msg = "Failed to get storage pool: %s" % (six.text_type(e))
+            err_msg = f"Failed to get storage pool: {six.text_type(e)}"
             LOG.error(err_msg)
             raise e
         except Exception as err:
-            err_msg = "Failed to get storage pool: %s" % (six.text_type(err))
+            err_msg = f"Failed to get storage pool: {six.text_type(err)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -292,14 +293,14 @@ class SSHHandler(object):
                 volume_str = ' '.join(volume_res[i].split())
                 strinfo = volume_str.split(' ')
                 volume_name = strinfo[1]
-                detail_command = 'lsvdisk -delim : %s' % volume_name
+                detail_command = f'lsvdisk -delim : {volume_name}'
                 deltail_info = self.exec_ssh_command(detail_command)
                 volume_map = {}
                 self.handle_detail(deltail_info, volume_map, split=':')
                 status = 'normal' if volume_map.get('status') == 'online' \
-                    else 'offline'
+                        else 'offline'
                 volume_type = 'thin' if volume_map.get('se_copy') == 'yes' \
-                    else 'thick'
+                        else 'thick'
                 total_capacity = self.parse_string(volume_map.get('capacity'))
                 free_capacity = self.parse_string(volume_map.
                                                   get('free_capacity'))
@@ -331,11 +332,11 @@ class SSHHandler(object):
 
             return volume_list
         except exception.DelfinException as e:
-            err_msg = "Failed to get storage volume: %s" % (six.text_type(e))
+            err_msg = f"Failed to get storage volume: {six.text_type(e)}"
             LOG.error(err_msg)
             raise e
         except Exception as err:
-            err_msg = "Failed to get storage volume: %s" % (six.text_type(err))
+            err_msg = f"Failed to get storage volume: {six.text_type(err)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -350,12 +351,12 @@ class SSHHandler(object):
                     continue
                 alert_str = ' '.join(alert_res[i].split())
                 strinfo = alert_str.split(' ', 1)
-                detail_command = 'lseventlog %s' % strinfo[0]
+                detail_command = f'lseventlog {strinfo[0]}'
                 deltail_info = self.exec_ssh_command(detail_command)
                 alert_map = {}
                 self.handle_detail(deltail_info, alert_map, split=' ')
                 occur_time = int(alert_map.get('last_timestamp_epoch')) * \
-                    self.SECONDS_TO_MS
+                        self.SECONDS_TO_MS
                 if not alert_util.is_alert_in_time_range(query_para,
                                                          occur_time):
                     continue
@@ -383,18 +384,17 @@ class SSHHandler(object):
 
             return alert_list
         except exception.DelfinException as e:
-            err_msg = "Failed to get storage alert: %s" % (six.text_type(e))
+            err_msg = f"Failed to get storage alert: {six.text_type(e)}"
             LOG.error(err_msg)
             raise e
         except Exception as err:
-            err_msg = "Failed to get storage alert: %s" % (six.text_type(err))
+            err_msg = f"Failed to get storage alert: {six.text_type(err)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
     def fix_alert(self, alert):
-        command_line = 'cheventlog -fix %s' % alert
-        result = self.exec_ssh_command(command_line)
-        if result:
+        command_line = f'cheventlog -fix {alert}'
+        if result := self.exec_ssh_command(command_line):
             if self.ALERT_NOT_FOUND_CODE not in result:
                 raise exception.InvalidResults(six.text_type(result))
             LOG.warning("Alert %s doesn't exist.", alert)
@@ -410,15 +410,15 @@ class SSHHandler(object):
                 control_str = ' '.join(control_res[i].split())
                 str_info = control_str.split(' ')
                 control_id = str_info[0]
-                detail_command = 'lscontroller %s' % control_id
+                detail_command = f'lscontroller {control_id}'
                 deltail_info = self.exec_ssh_command(detail_command)
                 control_map = {}
                 self.handle_detail(deltail_info, control_map, split=' ')
                 status = constants.ControllerStatus.NORMAL
                 if control_map.get('degraded') == 'yes':
                     status = constants.ControllerStatus.OFFLINE
-                soft_version = '%s %s' % (control_map.get('vendor_id'),
-                                          control_map.get('product_id_low'))
+                soft_version = f"{control_map.get('vendor_id')} {control_map.get('product_id_low')}"
+
                 controller_result = {
                     'name': control_map.get('controller_name'),
                     'storage_id': storage_id,
@@ -430,8 +430,8 @@ class SSHHandler(object):
                 controller_list.append(controller_result)
             return controller_list
         except Exception as err:
-            err_msg = "Failed to get controller attributes from Storwize: %s"\
-                      % (six.text_type(err))
+            err_msg = f"Failed to get controller attributes from Storwize: {six.text_type(err)}"
+
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -446,7 +446,7 @@ class SSHHandler(object):
                 control_str = ' '.join(disk_res[i].split())
                 str_info = control_str.split(' ')
                 disk_id = str_info[0]
-                detail_command = 'lsmdisk %s' % disk_id
+                detail_command = f'lsmdisk {disk_id}'
                 deltail_info = self.exec_ssh_command(detail_command)
                 disk_map = {}
                 self.handle_detail(deltail_info, disk_map, split=' ')
@@ -456,8 +456,7 @@ class SSHHandler(object):
                 physical_type = SSHHandler.DISK_PHYSICAL_TYPE.get(
                     disk_map.get('fabric_type'),
                     constants.DiskPhysicalType.UNKNOWN)
-                location = '%s_%s' % (disk_map.get('controller_name'),
-                                      disk_map.get('name'))
+                location = f"{disk_map.get('controller_name')}_{disk_map.get('name')}"
                 disk_result = {
                     'name': disk_map.get('name'),
                     'storage_id': storage_id,
@@ -472,8 +471,7 @@ class SSHHandler(object):
                 disk_list.append(disk_result)
             return disk_list
         except Exception as err:
-            err_msg = "Failed to get disk attributes from Storwize: %s" % \
-                      (six.text_type(err))
+            err_msg = f"Failed to get disk attributes from Storwize: {six.text_type(err)}"
             raise exception.InvalidResults(err_msg)
 
     def get_fc_port(self, storage_id):
@@ -486,7 +484,7 @@ class SSHHandler(object):
             control_str = ' '.join(fc_res[i].split())
             str_info = control_str.split(' ')
             port_id = str_info[0]
-            detail_command = 'lsportfc %s' % port_id
+            detail_command = f'lsportfc {port_id}'
             deltail_info = self.exec_ssh_command(detail_command)
             port_map = {}
             self.handle_detail(deltail_info, port_map, split=' ')
@@ -498,8 +496,7 @@ class SSHHandler(object):
             port_type = constants.PortType.FC
             if port_map.get('type') == 'ethernet':
                 port_type = constants.PortType.ETH
-            location = '%s_%s' % (port_map.get('node_name'),
-                                  port_map.get('id'))
+            location = f"{port_map.get('node_name')}_{port_map.get('id')}"
             port_result = {
                 'name': port_map.get('id'),
                 'storage_id': storage_id,
@@ -520,7 +517,7 @@ class SSHHandler(object):
         port_list = []
         for i in range(1, 3):
             port_array = []
-            port_command = 'lsportip %s' % i
+            port_command = f'lsportip {i}'
             port_info = self.exec_ssh_command(port_command)
             port_arr = port_info.split('\n')
             port_map = {}
@@ -532,11 +529,9 @@ class SSHHandler(object):
                     if len(strinfo) > 1:
                         value = strinfo[1]
                     port_map[key] = value
-                else:
-                    if len(port_map) > 1:
-                        port_array.append(port_map)
-                        port_map = {}
-                        continue
+                elif len(port_map) > 1:
+                    port_array.append(port_map)
+                    port_map = {}
             for port in port_array:
                 if port.get('failover') == 'yes':
                     continue
@@ -547,8 +542,7 @@ class SSHHandler(object):
                 if port.get('link_state') == 'active':
                     conn_status = constants.PortConnectionStatus.CONNECTED
                 port_type = constants.PortType.ETH
-                location = '%s_%s' % (port.get('node_name'),
-                                      port.get('id'))
+                location = f"{port.get('node_name')}_{port.get('id')}"
                 port_result = {
                     'name': location,
                     'storage_id': storage_id,
@@ -585,6 +579,5 @@ class SSHHandler(object):
             port_list.extend(self.get_iscsi_port(storage_id))
             return port_list
         except Exception as err:
-            err_msg = "Failed to get ports attributes from Storwize: %s" % \
-                      (six.text_type(err))
+            err_msg = f"Failed to get ports attributes from Storwize: {six.text_type(err)}"
             raise exception.InvalidResults(err_msg)

@@ -109,10 +109,7 @@ class Manager(base.Base, PeriodicTasks):
         return version.version_string()
 
     def service_config(self, context):
-        config = {}
-        for key in CONF:
-            config[key] = CONF.get(key, None)
-        return config
+        return {key: CONF.get(key, None) for key in CONF}
 
     def is_service_ready(self):
         """Method indicating if service is ready.

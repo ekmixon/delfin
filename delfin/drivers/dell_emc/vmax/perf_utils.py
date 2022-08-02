@@ -38,8 +38,7 @@ def construct_metrics(storage_id, resource_metrics, unit_map, perf_list):
             metrics_map = parse_performance_data(collected_metrics)
 
             for key, value in resource_metrics.items():
-                metrics_map_value = metrics_map.get(value)
-                if metrics_map_value:
+                if metrics_map_value := metrics_map.get(value):
                     metrics_values[key] = metrics_values.get(key, {})
                     for k, v in metrics_map_value.items():
                         metrics_values[key][k] = v

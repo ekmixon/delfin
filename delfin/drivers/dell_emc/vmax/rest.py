@@ -214,12 +214,11 @@ class VMaxRest(object):
                        breakdown
         :return: target uri -- str
         """
-        if args:
-            target_uri = self._build_uri_legacy_args(*args, **kwargs)
-        else:
-            target_uri = self._build_uri_kwargs(**kwargs)
-
-        return target_uri
+        return (
+            self._build_uri_legacy_args(*args, **kwargs)
+            if args
+            else self._build_uri_kwargs(**kwargs)
+        )
 
     @staticmethod
     def _build_uri_legacy_args(*args, **kwargs):
@@ -409,7 +408,7 @@ class VMaxRest(object):
         :param version: the unisphere version
         :returns: array_details -- dict or None
         """
-        target_uri = '/%s/system/symmetrix/%s' % (version, array)
+        target_uri = f'/{version}/system/symmetrix/{array}'
         array_details = self.get_request(target_uri, 'system')
         if not array_details:
             LOG.error("Cannot connect to array %(array)s.",
@@ -433,11 +432,11 @@ class VMaxRest(object):
         :returns: version dict
         """
         post_90_endpoint = '/version'
-        pre_91_endpoint = '/system/version'
-
         status_code, version_dict = self.request(
             post_90_endpoint, GET, timeout=VERSION_GET_TIME_OUT)
         if status_code is not STATUS_200:
+            pre_91_endpoint = '/system/version'
+
             status_code, version_dict = self.request(
                 pre_91_endpoint, GET, timeout=VERSION_GET_TIME_OUT)
 
@@ -457,10 +456,14 @@ class VMaxRest(object):
         """
         LOG.debug("storagePoolName: %(srp)s, array: %(array)s.",
                   {'srp': srp, 'array': array})
-        srp_details = self.get_resource(array, SLOPROVISIONING, 'srp',
-                                        resource_name=srp, version=version,
-                                        params=None)
-        return srp_details
+        return self.get_resource(
+            array,
+            SLOPROVISIONING,
+            'srp',
+            resource_name=srp,
+            version=version,
+            params=None,
+        )
 
     def get_vmax_array_details(self, version=U4V_VERSION, array=''):
         """Get the VMax array properties.
@@ -472,10 +475,11 @@ class VMaxRest(object):
         vmax_model = system_info.get('model', 'VMAX')
         vmax_ucode = system_info.get('ucode')
         vmax_display_name = system_info.get('display_name', vmax_model)
-        array_details = {"model": vmax_model,
-                         "ucode": vmax_ucode,
-                         "display_name": vmax_display_name}
-        return array_details
+        return {
+            "model": vmax_model,
+            "ucode": vmax_ucode,
+            "display_name": vmax_display_name,
+        }
 
     def get_array_model_info(self, version=U4V_VERSION, array=''):
         """Get the VMax model.
@@ -483,12 +487,10 @@ class VMaxRest(object):
         :param array: the array serial number
         :returns: the VMax model
         """
-        is_next_gen = False
         system_info = self.get_array_detail(version, array)
         array_model = system_info.get('model', None)
         ucode_version = system_info['ucode'].split('.')[0]
-        if ucode_version >= UCODE_5978:
-            is_next_gen = True
+        is_next_gen = ucode_version >= UCODE_5978
         return array_model, is_next_gen
 
     def get_storage_group(self, array, version, storage_group_name):
@@ -504,7 +506,7 @@ class VMaxRest(object):
             resource_name=storage_group_name)
 
     def get_system_capacity(self, array, version):
-        target_uri = '/%s/sloprovisioning/symmetrix/%s' % (version, array)
+        target_uri = f'/{version}/sloprovisioning/symmetrix/{array}'
         capacity_details = self.get_request(target_uri, None)
         if not capacity_details:
             LOG.error("Cannot connect to array %(array)s.",
@@ -520,9 +522,7 @@ class VMaxRest(object):
         symmetrix_info = self.get_system_capacity(array, version)
         default_fba_srp = symmetrix_info.get('default_fba_srp', None)
         default_ckd_srp = symmetrix_info.get('default_ckd_srp', None)
-        default_srps = {"FBA": default_fba_srp,
-                        "CKD": default_ckd_srp}
-        return default_srps
+        return {"FBA": default_fba_srp, "CKD": default_ckd_srp}
 
     def get_volume(self, array, version, device_id):
         """Get a VMax volume from array.
@@ -555,9 +555,7 @@ class VMaxRest(object):
         volume_dict_list = self.get_resource(
             array, SLOPROVISIONING, 'volume', version=version, params=params)
         try:
-            for vol_dict in volume_dict_list:
-                device_id = vol_dict['volumeId']
-                device_ids.append(device_id)
+            device_ids.extend(vol_dict['volumeId'] for vol_dict in volume_dict_list)
         except (KeyError, TypeError):
             pass
         return device_ids
@@ -624,7 +622,7 @@ class VMaxRest(object):
             LOG.error(exception_message)
             raise exception.ControllerListNotFound(array)
 
-        return response.get('directorId', list()) if response else list()
+        return response.get('directorId', []) if response else []
 
     def get_port(self, array, version, director_id, port_id):
         """Get a VMAX director from array.
@@ -698,9 +696,7 @@ class VMaxRest(object):
             LOG.error(exception_message)
             raise exception.PortListNotFound(array)
 
-        port_ids = response.get('symmetrixPortKey',
-                                list()) if response else list()
-        return port_ids
+        return response.get('symmetrixPortKey', []) if response else []
 
     def post_request(self, target_uri, payload):
         """Generate  a POST request.
@@ -726,7 +722,7 @@ class VMaxRest(object):
         response = self.get_request(target_uri, PERFORMANCE, None)
         if response is None:
             err_msg = "Failed to get Array keys from VMAX: {0}"\
-                .format(str(array))
+                    .format(str(array))
             LOG.error(err_msg)
 
         return response
@@ -776,22 +772,24 @@ class VMaxRest(object):
          """
         storage_metrics = []
         for k in metrics.keys():
-            vmax_key = constants.STORAGE_METRICS.get(k)
-            if vmax_key:
+            if vmax_key := constants.STORAGE_METRICS.get(k):
                 storage_metrics.append(vmax_key)
 
-        keys = self.get_array_keys(array)
-        keys_dict = None
-        if keys:
+        if keys := self.get_array_keys(array):
             keys_dict = keys.get('arrayInfo', None)
-
+        else:
+            keys_dict = None
         metrics_list = []
         for key_dict in keys_dict:
             if key_dict.get('symmetrixId') == array:
-                metrics_res = self.get_resource_metrics(
-                    array, start_time, end_time, 'Array',
-                    storage_metrics, payload=None)
-                if metrics_res:
+                if metrics_res := self.get_resource_metrics(
+                    array,
+                    start_time,
+                    end_time,
+                    'Array',
+                    storage_metrics,
+                    payload=None,
+                ):
                     label = {
                         'resource_id': key_dict.get('symmetrixId'),
                         'resource_name': 'VMAX' + key_dict.get('symmetrixId'),
@@ -812,22 +810,19 @@ class VMaxRest(object):
          """
         pool_metrics = []
         for k in metrics.keys():
-            vmax_key = constants.POOL_METRICS.get(k)
-            if vmax_key:
+            if vmax_key := constants.POOL_METRICS.get(k):
                 pool_metrics.append(vmax_key)
 
-        keys = self.get_resource_keys(array, 'SRP')
-        keys_dict = None
-        if keys:
+        if keys := self.get_resource_keys(array, 'SRP'):
             keys_dict = keys.get('srpInfo', None)
-
+        else:
+            keys_dict = None
         metrics_list = []
         for key_dict in keys_dict:
             payload = {'srpId': key_dict.get('srpId')}
-            metrics_res = self.get_resource_metrics(
-                array, start_time, end_time, 'SRP',
-                pool_metrics, payload=payload)
-            if metrics_res:
+            if metrics_res := self.get_resource_metrics(
+                array, start_time, end_time, 'SRP', pool_metrics, payload=payload
+            ):
                 label = {
                     'resource_id': key_dict.get('srpId'),
                     'resource_name': key_dict.get('srpId'),
@@ -848,22 +843,24 @@ class VMaxRest(object):
          """
         fedirector_metrics = []
         for k in metrics.keys():
-            vmax_key = constants.FEDIRECTOR_METRICS.get(k)
-            if vmax_key:
+            if vmax_key := constants.FEDIRECTOR_METRICS.get(k):
                 fedirector_metrics.append(vmax_key)
 
-        keys = self.get_resource_keys(array, 'FEDirector')
-        keys_dict = None
-        if keys:
+        if keys := self.get_resource_keys(array, 'FEDirector'):
             keys_dict = keys.get('feDirectorInfo', None)
-
+        else:
+            keys_dict = None
         metrics_list = []
         for key_dict in keys_dict:
             payload = {'directorId': key_dict.get('directorId')}
-            metrics_res = self.get_resource_metrics(
-                array, start_time, end_time, 'FEDirector',
-                fedirector_metrics, payload=payload)
-            if metrics_res:
+            if metrics_res := self.get_resource_metrics(
+                array,
+                start_time,
+                end_time,
+                'FEDirector',
+                fedirector_metrics,
+                payload=payload,
+            ):
                 label = {
                     'resource_id': key_dict.get('directorId'),
                     'resource_name': 'FEDirector_' +
@@ -885,22 +882,24 @@ class VMaxRest(object):
          """
         bedirector_metrics = []
         for k in metrics.keys():
-            vmax_key = constants.BEDIRECTOR_METRICS.get(k)
-            if vmax_key:
+            if vmax_key := constants.BEDIRECTOR_METRICS.get(k):
                 bedirector_metrics.append(vmax_key)
 
-        keys = self.get_resource_keys(array, 'BEDirector')
-        keys_dict = None
-        if keys:
+        if keys := self.get_resource_keys(array, 'BEDirector'):
             keys_dict = keys.get('beDirectorInfo', None)
-
+        else:
+            keys_dict = None
         metrics_list = []
         for key_dict in keys_dict:
             payload = {'directorId': key_dict.get('directorId')}
-            metrics_res = self.get_resource_metrics(
-                array, start_time, end_time, 'BEDirector',
-                bedirector_metrics, payload=payload)
-            if metrics_res:
+            if metrics_res := self.get_resource_metrics(
+                array,
+                start_time,
+                end_time,
+                'BEDirector',
+                bedirector_metrics,
+                payload=payload,
+            ):
                 label = {
                     'resource_id': key_dict.get('directorId'),
                     'resource_name': 'BEDirector_' +
@@ -922,22 +921,24 @@ class VMaxRest(object):
          """
         rdfdirector_metrics = []
         for k in metrics.keys():
-            vmax_key = constants.RDFDIRECTOR_METRICS.get(k)
-            if vmax_key:
+            if vmax_key := constants.RDFDIRECTOR_METRICS.get(k):
                 rdfdirector_metrics.append(vmax_key)
 
-        keys = self.get_resource_keys(array, 'RDFDirector')
-        keys_dict = None
-        if keys:
+        if keys := self.get_resource_keys(array, 'RDFDirector'):
             keys_dict = keys.get('rdfDirectorInfo', None)
-
+        else:
+            keys_dict = None
         metrics_list = []
         for key_dict in keys_dict:
             payload = {'directorId': key_dict.get('directorId')}
-            metrics_res = self.get_resource_metrics(
-                array, start_time, end_time, 'RDFDirector',
-                rdfdirector_metrics, payload=payload)
-            if metrics_res:
+            if metrics_res := self.get_resource_metrics(
+                array,
+                start_time,
+                end_time,
+                'RDFDirector',
+                rdfdirector_metrics,
+                payload=payload,
+            ):
                 label = {
                     'resource_id': key_dict.get('directorId'),
                     'resource_name': 'RDFDirector_' +
@@ -976,15 +977,13 @@ class VMaxRest(object):
          """
         feport_metrics = []
         for k in metrics.keys():
-            vmax_key = constants.RDFDIRECTOR_METRICS.get(k)
-            if vmax_key:
+            if vmax_key := constants.RDFDIRECTOR_METRICS.get(k):
                 feport_metrics.append(vmax_key)
 
-        director_keys = self.get_resource_keys(array, 'FEDirector')
-        director_keys_dict = None
-        if director_keys:
+        if director_keys := self.get_resource_keys(array, 'FEDirector'):
             director_keys_dict = director_keys.get('feDirectorInfo', None)
-
+        else:
+            director_keys_dict = None
         metrics_list = []
         for director_key_dict in director_keys_dict:
             payload = {'directorId': director_key_dict.get('directorId')}
@@ -995,10 +994,14 @@ class VMaxRest(object):
 
             for key_dict in keys_dict:
                 payload['portId'] = key_dict.get('portId')
-                metrics_res = self.get_resource_metrics(
-                    array, start_time, end_time, 'FEPort',
-                    feport_metrics, payload=payload)
-                if metrics_res:
+                if metrics_res := self.get_resource_metrics(
+                    array,
+                    start_time,
+                    end_time,
+                    'FEPort',
+                    feport_metrics,
+                    payload=payload,
+                ):
                     label = {
                         'resource_id': key_dict.get('portId'),
                         'resource_name': 'FEPort_' +
@@ -1022,15 +1025,13 @@ class VMaxRest(object):
 
         beport_metrics = []
         for k in metrics.keys():
-            vmax_key = constants.BEPORT_METRICS.get(k)
-            if vmax_key:
+            if vmax_key := constants.BEPORT_METRICS.get(k):
                 beport_metrics.append(vmax_key)
 
-        director_keys = self.get_resource_keys(array, 'BEDirector')
-        director_keys_dict = None
-        if director_keys:
+        if director_keys := self.get_resource_keys(array, 'BEDirector'):
             director_keys_dict = director_keys.get('beDirectorInfo', None)
-
+        else:
+            director_keys_dict = None
         metrics_list = []
         for director_key_dict in director_keys_dict:
             payload = {'directorId': director_key_dict.get('directorId')}
@@ -1041,10 +1042,14 @@ class VMaxRest(object):
 
             for key_dict in keys_dict:
                 payload['portId'] = key_dict.get('portId')
-                metrics_res = self.get_resource_metrics(
-                    array, start_time, end_time, 'BEPort',
-                    beport_metrics, payload=payload)
-                if metrics_res:
+                if metrics_res := self.get_resource_metrics(
+                    array,
+                    start_time,
+                    end_time,
+                    'BEPort',
+                    beport_metrics,
+                    payload=payload,
+                ):
                     label = {
                         'resource_id': key_dict.get('portId'),
                         'resource_name': 'BEPort_' +
@@ -1067,15 +1072,13 @@ class VMaxRest(object):
          """
         rdfport_metrics = []
         for k in metrics.keys():
-            vmax_key = constants.RDFPORT_METRICS.get(k)
-            if vmax_key:
+            if vmax_key := constants.RDFPORT_METRICS.get(k):
                 rdfport_metrics.append(vmax_key)
 
-        director_keys = self.get_resource_keys(array, 'RDFDirector')
-        director_keys_dict = None
-        if director_keys:
+        if director_keys := self.get_resource_keys(array, 'RDFDirector'):
             director_keys_dict = director_keys.get('rdfDirectorInfo', None)
-
+        else:
+            director_keys_dict = None
         metrics_list = []
         for director_key_dict in director_keys_dict:
             payload = {'directorId': director_key_dict.get('directorId')}
@@ -1086,10 +1089,14 @@ class VMaxRest(object):
 
             for key_dict in keys_dict:
                 payload['portId'] = key_dict.get('portId')
-                metrics_res = self.get_resource_metrics(
-                    array, start_time, end_time, 'RDFPort',
-                    rdfport_metrics, payload=payload)
-                if metrics_res:
+                if metrics_res := self.get_resource_metrics(
+                    array,
+                    start_time,
+                    end_time,
+                    'RDFPort',
+                    rdfport_metrics,
+                    payload=payload,
+                ):
                     label = {
                         'resource_id': key_dict.get('portId'),
                         'resource_name': 'BEPort_' +
@@ -1189,8 +1196,7 @@ class VMaxRest(object):
         :param version: the unisphere version
         :returns: alert_list -- dict or None
         """
-        target_uri = '/%s/system/symmetrix/%s/alert?acknowledged=false' \
-                     % (version, array)
+        target_uri = f'/{version}/system/symmetrix/{array}/alert?acknowledged=false'
 
         # First get list of all alert ids
         alert_id_list = self.get_alert_request(target_uri)
@@ -1203,8 +1209,7 @@ class VMaxRest(object):
         alert_id_list = alert_id_list['alertId']
         alert_list = []
         for alert_id in alert_id_list:
-            target_uri = '/%s/system/symmetrix/%s/alert/%s' \
-                         % (version, array, alert_id)
+            target_uri = f'/{version}/system/symmetrix/{array}/alert/{alert_id}'
             alert = self.get_alert_request(target_uri)
             if alert is not None and alert_util.is_alert_in_time_range(
                     query_para, alert['created_date_milliseconds']):
@@ -1219,8 +1224,7 @@ class VMaxRest(object):
         :param version: the unisphere version
         :returns: result -- success/failure
         """
-        target_uri = '/%s/system/symmetrix/%s/alert/%s' \
-                     % (version, array, sequence_number)
+        target_uri = f'/{version}/system/symmetrix/{array}/alert/{sequence_number}'
 
         status, message = self.request(target_uri, DELETE, params=None)
         if status != STATUS_204:

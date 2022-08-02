@@ -92,10 +92,7 @@ class Request(webob.Request):
         """
         if not name:
             name = self.path
-        if name not in self._resource_cache:
-            # Nothing has been cached for this key yet
-            return None
-        return self._resource_cache[name]
+        return None if name not in self._resource_cache else self._resource_cache[name]
 
     def cached_resource_by_id(self, resource_id, name=None):
         """Get a resource by ID cached under the given resource name.
@@ -109,10 +106,7 @@ class Request(webob.Request):
         :returns: the cached resource or None if the item is not in the cache
         """
         resources = self.cached_resource(name)
-        if not resources:
-            # Nothing has been cached yet for this key yet
-            return None
-        return resources.get(resource_id)
+        return resources.get(resource_id) if resources else None
 
     def cache_db_items(self, key, items, item_key='id'):
         """Cache db items.
@@ -164,7 +158,7 @@ class Request(webob.Request):
             # Check URL path suffix
             parts = self.path.rsplit('.', 1)
             if len(parts) > 1:
-                possible_type = 'application/' + parts[1]
+                possible_type = f'application/{parts[1]}'
                 if possible_type in SUPPORTED_CONTENT_TYPES:
                     content_type = possible_type
 
@@ -507,14 +501,12 @@ class Resource(wsgi.Application):
 
         self.controller = controller
 
-        default_deserializers = dict(json=JSONDeserializer)
-        default_deserializers.update(deserializers)
-
+        default_deserializers = dict(json=JSONDeserializer) | deserializers
         self.default_deserializers = default_deserializers
         self.default_serializers = dict(json=JSONDictSerializer)
 
         self.action_peek = dict(json=action_peek_json)
-        self.action_peek.update(action_peek or {})
+        self.action_peek |= (action_peek or {})
 
         # Copy over the actions dictionary
         self.wsgi_actions = {}
@@ -597,10 +589,7 @@ class Resource(wsgi.Application):
         meth_deserializers = getattr(meth, 'wsgi_deserializers', {})
         try:
             mtype = _MEDIA_TYPE_MAP.get(content_type, content_type)
-            if mtype in meth_deserializers:
-                deserializer = meth_deserializers[mtype]
-            else:
-                deserializer = self.default_deserializers[mtype]
+            deserializer = meth_deserializers.get(mtype, self.default_deserializers[mtype])
         except (KeyError, TypeError):
             raise exception.InvalidContentType(content_type)
 
@@ -709,10 +698,7 @@ class Resource(wsgi.Application):
 
         # Now, deserialize the request body...
         try:
-            if content_type:
-                contents = self.deserialize(meth, content_type, body)
-            else:
-                contents = {}
+            contents = self.deserialize(meth, content_type, body) if content_type else {}
         except exception.InvalidContentType as ex:
             ex = exception.ConvertedException(ex)
             return Fault(ex)
@@ -765,9 +751,9 @@ class Resource(wsgi.Application):
                 response = self.post_process_extensions(post, resp_obj,
                                                         request, action_args)
 
-            if resp_obj and not response:
-                response = resp_obj.serialize(request, accept,
-                                              self.default_serializers)
+        if resp_obj and not response:
+            response = resp_obj.serialize(request, accept,
+                                          self.default_serializers)
 
         try:
             msg_dict = dict(url=request.url, status=response.status_int)
@@ -784,10 +770,12 @@ class Resource(wsgi.Application):
 
         # Look up the method
         try:
-            if not self.controller:
-                meth = getattr(self, action)
-            else:
-                meth = getattr(self.controller, action)
+            meth = (
+                getattr(self.controller, action)
+                if self.controller
+                else getattr(self, action)
+            )
+
         except AttributeError:
             if (not self.wsgi_actions or
                     action not in ['action', 'create', 'delete']):
@@ -852,11 +840,7 @@ def extends(*args, **kwargs):
         return func
 
     # If we have positional arguments, call the decorator
-    if args:
-        return decorator(*args)
-
-    # OK, return the decorator instead
-    return decorator
+    return decorator(*args) if args else decorator
 
 
 class ControllerMetaclass(type):
@@ -866,7 +850,7 @@ class ControllerMetaclass(type):
     mapping action keys to method names.
     """
 
-    def __new__(mcs, name, bases, cls_dict):
+    def __new__(cls, name, bases, cls_dict):
         """Adds the wsgi_actions dictionary to the class."""
 
         # Find all actions
@@ -874,7 +858,7 @@ class ControllerMetaclass(type):
         extensions = []
         # start with wsgi actions from base classes
         for base in bases:
-            actions.update(getattr(base, 'wsgi_actions', {}))
+            actions |= getattr(base, 'wsgi_actions', {})
 
         for key, value in cls_dict.items():
             if not callable(value):
@@ -888,8 +872,7 @@ class ControllerMetaclass(type):
         cls_dict['wsgi_actions'] = actions
         cls_dict['wsgi_extensions'] = extensions
 
-        return super(ControllerMetaclass, mcs).__new__(mcs, name, bases,
-                                                       cls_dict)
+        return super(ControllerMetaclass, cls).__new__(cls, name, bases, cls_dict)
 
 
 @six.add_metaclass(ControllerMetaclass)
@@ -910,7 +893,7 @@ class Controller(object):
 
     @staticmethod
     def is_valid_body(body, entity_name):
-        if not (body and entity_name in body):
+        if not body or entity_name not in body:
             return False
 
         def is_dict(d):
@@ -920,10 +903,7 @@ class Controller(object):
             except AttributeError:
                 return False
 
-        if not is_dict(body[entity_name]):
-            return False
-
-        return True
+        return bool(is_dict(body[entity_name]))
 
 
 class Fault(webob.exc.HTTPException):
@@ -947,7 +927,7 @@ class Fault(webob.exc.HTTPException):
                  {'code': status_code, 'reason': fault_data})
         if status_code == 413:
             retry = self.wrapped_exc.headers['Retry-After']
-            fault_data['retryAfter'] = '%s' % retry
+            fault_data['retryAfter'] = f'{retry}'
 
         content_type = req.best_match_content_type()
         serializer = {
@@ -965,6 +945,5 @@ class Fault(webob.exc.HTTPException):
 
 
 def _set_request_id_header(req, headers):
-    context = req.environ.get('delfin.context')
-    if context:
+    if context := req.environ.get('delfin.context'):
         headers['x-compute-request-id'] = context.request_id

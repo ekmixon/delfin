@@ -26,7 +26,7 @@ class StorageDriver(object):
             in memory, so suggest each driver use them to get session
             instead of save them in memory directly.
         """
-        self.storage_id = kwargs.get('storage_id', None)
+        self.storage_id = kwargs.get('storage_id')
 
     @abc.abstractmethod
     def reset_connection(self, context, **kwargs):
@@ -99,8 +99,6 @@ class StorageDriver(object):
         *****************************************************
         """
 
-        pass
-
     @abc.abstractmethod
     def list_alerts(self, context, query_para=None):
         """List all current alerts from storage system."""
@@ -109,7 +107,6 @@ class StorageDriver(object):
         'end_time' (in milliseconds) which is to be used to filter
         alerts at driver
         """
-        pass
 
     @abc.abstractmethod
     def clear_alert(self, context, sequence_number):
@@ -152,7 +149,6 @@ class StorageDriver(object):
                              'resource_type': 'storagePool'},
                      values={1616560337249: 90.08194398331271})]
         """
-        pass
 
     def list_quotas(self, context):
         """List all quotas from storage system."""

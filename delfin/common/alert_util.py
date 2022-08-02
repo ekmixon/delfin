@@ -48,12 +48,14 @@ def is_alert_in_time_range(query_para, occur_time):
         LOG.warning("Invalid query parameters received, ignoring them")
         return True
 
-    if begin_time is not None and end_time is not None:
-        if begin_time <= occur_time <= end_time:
-            return True
-    elif begin_time is not None and begin_time <= occur_time:
-        return True
-    elif end_time is not None and end_time >= occur_time:
-        return True
-
-    return False
+    return (
+        begin_time is not None
+        and end_time is not None
+        and begin_time <= occur_time <= end_time
+        or (begin_time is None or end_time is None)
+        and begin_time is not None
+        and begin_time <= occur_time
+        or (begin_time is None or end_time is None)
+        and end_time is not None
+        and end_time >= occur_time
+    )

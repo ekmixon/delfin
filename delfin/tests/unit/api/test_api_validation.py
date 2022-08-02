@@ -101,7 +101,7 @@ class APIValidationTestCase(test.TestCase):
                 self.assertEqual(expected_detail, ex.error_args[0],
                                  'Exception details did not match expected')
         except Exception as ex:
-            self.fail('An unexpected exception happens: %s' % ex)
+            self.fail(f'An unexpected exception happens: {ex}')
         else:
             self.fail('Any exception did not happen.')
 
@@ -216,17 +216,17 @@ class PatternPropertiesTestCase(APIValidationTestCase):
 
     def test_validate_patternProperties_fails(self):
         details = "'__' does not match any of the regexes: " \
-                  "'^[a-zA-Z0-9]{1,10}$'"
+                      "'^[a-zA-Z0-9]{1,10}$'"
         self.check_validation_error(self.post, body={'__': 'bar'},
                                     expected_detail=details)
 
         details = "'' does not match any of the regexes: " \
-                  "'^[a-zA-Z0-9]{1,10}$'"
+                      "'^[a-zA-Z0-9]{1,10}$'"
         self.check_validation_error(self.post, body={'': 'bar'},
                                     expected_detail=details)
 
         details = "'0123456789a' does not match any of the regexes: " \
-                  "'^[a-zA-Z0-9]{1,10}$'"
+                      "'^[a-zA-Z0-9]{1,10}$'"
         self.check_validation_error(self.post, body={'0123456789a': 'bar'},
                                     expected_detail=details)
 

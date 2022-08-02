@@ -63,7 +63,7 @@ class KafkaExporter(object):
         topic = kafka.kafka_topic_name
         ip = kafka.kafka_ip
         port = kafka.kafka_port
-        bootstrap_server = ip + ':' + port
+        bootstrap_server = f'{ip}:{port}'
         producer = KafkaProducer(
             bootstrap_servers=[bootstrap_server],
             value_serializer=lambda v: json.dumps(v).encode('utf-8'))

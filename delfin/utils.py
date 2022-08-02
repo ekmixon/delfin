@@ -77,9 +77,10 @@ def isotime(at=None, subsecond=False):
 
     if not at:
         at = timeutils.utcnow()
-    st = at.strftime(_ISO8601_TIME_FORMAT
-                     if not subsecond
-                     else _ISO8601_TIME_FORMAT_SUBSECOND)
+    st = at.strftime(
+        _ISO8601_TIME_FORMAT_SUBSECOND if subsecond else _ISO8601_TIME_FORMAT
+    )
+
     tz = at.tzinfo.tzname(None) if at.tzinfo else 'UTC'
     # Need to handle either iso8601 or python UTC format
     st += ('Z' if tz in ['UTC', 'UTC+00:00'] else tz)
@@ -87,7 +88,7 @@ def isotime(at=None, subsecond=False):
 
 
 def _get_root_helper():
-    return 'sudo delfin-rootwrap %s' % CONF.rootwrap_config
+    return f'sudo delfin-rootwrap {CONF.rootwrap_config}'
 
 
 def execute(*cmd, **kwargs):
@@ -108,7 +109,7 @@ class SSHPool(pools.Pool):
         self.port = port
         self.login = login
         self.password = password
-        self.conn_timeout = conn_timeout if conn_timeout else None
+        self.conn_timeout = conn_timeout or None
         self.path_to_private_key = privatekey
         super(SSHPool, self).__init__(*args, **kwargs)
 
@@ -160,8 +161,7 @@ class SSHPool(pools.Pool):
         create and return a new connection.
         """
         if self.free_items:
-            conn = self.free_items.popleft()
-            if conn:
+            if conn := self.free_items.popleft():
                 if conn.get_transport().is_active():
                     return conn
                 else:
@@ -190,20 +190,15 @@ def check_ssh_injection(cmd_list):
     for arg in cmd_list:
         arg = arg.strip()
 
-        # Check for matching quotes on the ends
-        is_quoted = re.match('^(?P<quote>[\'"])(?P<quoted>.*)(?P=quote)$', arg)
-        if is_quoted:
-            # Check for unescaped quotes within the quoted argument
-            quoted = is_quoted.group('quoted')
-            if quoted:
+        if is_quoted := re.match(
+            '^(?P<quote>[\'"])(?P<quoted>.*)(?P=quote)$', arg
+        ):
+            if quoted := is_quoted['quoted']:
                 if (re.match('[\'"]', quoted) or
                         re.search('[^\\\\][\'"]', quoted)):
                     raise exception.SSHInjectionThreat(cmd_list)
-        else:
-            # We only allow spaces within quoted arguments, and that
-            # is the only special character allowed within quotes
-            if len(arg.split()) > 1:
-                raise exception.SSHInjectionThreat(cmd_list)
+        elif len(arg.split()) > 1:
+            raise exception.SSHInjectionThreat(cmd_list)
 
         # Second, check whether danger character in command. So the shell
         # special operator must be a single argument.
@@ -212,9 +207,8 @@ def check_ssh_injection(cmd_list):
                 continue
 
             result = arg.find(c)
-            if not result == -1:
-                if result == 0 or not arg[result - 1] == '\\':
-                    raise exception.SSHInjectionThreat(cmd_list)
+            if result != -1 and (result == 0 or arg[result - 1] != '\\'):
+                raise exception.SSHInjectionThreat(cmd_list)
 
 
 def monkey_patch():
@@ -249,23 +243,17 @@ def monkey_patch():
         for key in module_data.keys():
             # set the decorator for the class methods
             if isinstance(module_data[key], pyclbr.Class):
-                clz = importutils.import_class("%s.%s" % (module, key))
+                clz = importutils.import_class(f"{module}.{key}")
                 # NOTE(vponomaryov): we need to distinguish class methods types
                 # for py2 and py3, because the concept of 'unbound methods' has
                 # been removed from the python3.x
-                if six.PY3:
-                    member_type = inspect.isfunction
-                else:
-                    member_type = inspect.ismethod
+                member_type = inspect.isfunction if six.PY3 else inspect.ismethod
                 for method, func in inspect.getmembers(clz, member_type):
-                    setattr(
-                        clz, method,
-                        decorator("%s.%s.%s" % (module, key, method), func))
+                    setattr(clz, method, decorator(f"{module}.{key}.{method}", func))
             # set the decorator for the function
             if isinstance(module_data[key], pyclbr.Function):
-                func = importutils.import_class("%s.%s" % (module, key))
-                setattr(sys.modules[module], key,
-                        decorator("%s.%s" % (module, key), func))
+                func = importutils.import_class(f"{module}.{key}")
+                setattr(sys.modules[module], key, decorator(f"{module}.{key}", func))
 
 
 def file_open(*args, **kwargs):
@@ -330,26 +318,19 @@ def walk_class_hierarchy(clazz, encountered=None):
         if subclass not in encountered:
             encountered.append(subclass)
             # drill down to leaves first
-            for subsubclass in walk_class_hierarchy(subclass, encountered):
-                yield subsubclass
+            yield from walk_class_hierarchy(subclass, encountered)
             yield subclass
 
 
 def is_valid_ip_address(ip_address, ip_version):
-    ip_version = ([int(ip_version)] if not isinstance(ip_version, list)
-                  else ip_version)
+    ip_version = ip_version if isinstance(ip_version, list) else [int(ip_version)]
 
-    if not set(ip_version).issubset(set([4, 6])):
+    if not set(ip_version).issubset({4, 6}):
         raise exception.ImproperIPVersion(ip_version)
 
-    if 4 in ip_version:
-        if netutils.is_valid_ipv4(ip_address):
-            return True
-    if 6 in ip_version:
-        if netutils.is_valid_ipv6(ip_address):
-            return True
-
-    return False
+    if 4 in ip_version and netutils.is_valid_ipv4(ip_address):
+        return True
+    return bool(6 in ip_version and netutils.is_valid_ipv6(ip_address))
 
 
 def is_all_tenants(search_opts):
@@ -530,10 +511,7 @@ def convert_str(text):
     if six.PY2:
         return encodeutils.safe_encode(text)
     else:
-        if isinstance(text, bytes):
-            return text.decode('utf-8')
-        else:
-            return text
+        return text.decode('utf-8') if isinstance(text, bytes) else text
 
 
 class DoNothing(str):
@@ -563,15 +541,13 @@ def if_notifications_enabled(function):
 
     @functools.wraps(function)
     def wrapped(*args, **kwargs):
-        if notifications_enabled(CONF):
-            return function(*args, **kwargs)
-        return DO_NOTHING
+        return function(*args, **kwargs) if notifications_enabled(CONF) else DO_NOTHING
 
     return wrapped
 
 
 def write_local_file(filename, contents, as_root=False):
-    tmp_filename = "%s.tmp" % filename
+    tmp_filename = f"{filename}.tmp"
     if as_root:
         execute('tee', tmp_filename, run_as_root=True, process_input=contents)
         execute('mv', '-f', tmp_filename, filename, run_as_root=True)
@@ -582,7 +558,7 @@ def write_local_file(filename, contents, as_root=False):
 
 
 def write_remote_file(ssh, filename, contents, as_root=False):
-    tmp_filename = "%s.tmp" % filename
+    tmp_filename = f"{filename}.tmp"
     if as_root:
         cmd = 'sudo tee "%s" > /dev/null' % tmp_filename
         cmd2 = 'sudo mv -f "%s" "%s"' % (tmp_filename, filename)
@@ -599,13 +575,12 @@ def write_remote_file(ssh, filename, contents, as_root=False):
 class Singleton(type):
     _instances = {}
 
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
+    def __call__(self, *args, **kwargs):
+        if self not in self._instances:
             with lock:
-                if cls not in cls._instances:
-                    cls._instances[cls] = super(Singleton,
-                                                cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
+                if self not in self._instances:
+                    self._instances[self] = super(Singleton, self).__call__(*args, **kwargs)
+        return self._instances[self]
 
 
 def utcnow_ms():

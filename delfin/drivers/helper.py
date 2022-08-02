@@ -39,8 +39,7 @@ def check_storage_repetition(context, storage):
         raise exception.InvalidResults(msg)
 
     filters = dict(serial_number=storage['serial_number'])
-    storage_list = db.storage_get_all(context, filters=filters)
-    if storage_list:
+    if storage_list := db.storage_get_all(context, filters=filters):
         msg = (_("Failed to register storage. Reason: same serial number: "
                  "%s detected.") % storage['serial_number'])
         LOG.error(msg)

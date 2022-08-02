@@ -98,9 +98,7 @@ class VMAXStorageDriver(driver.StorageDriver):
 
     def list_alerts(self, context, query_para):
         alert_list = self.client.list_alerts(query_para)
-        alert_model_list = unisphere_alerts.AlertHandler()\
-            .parse_queried_alerts(alert_list)
-        return alert_model_list
+        return unisphere_alerts.AlertHandler().parse_queried_alerts(alert_list)
 
     def collect_perf_metrics(self, context, storage_id,
                              resource_metrics, start_time,

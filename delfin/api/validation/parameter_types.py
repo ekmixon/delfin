@@ -96,9 +96,7 @@ def _build_regex_range(ws=True, invert=False, exclude=None):
             # there are about 10 in this range.
             result = (_is_printable(char) and
                       unicodedata.category(char) != "Zs")
-        if invert is True:
-            return not result
-        return result
+        return not result if invert is True else result
 
     # iterate through the entire character range. in_
     for c in _get_all_chars():
@@ -109,12 +107,12 @@ def _build_regex_range(ws=True, invert=False, exclude=None):
             in_range = True
         else:
             if in_range and last != last_added:
-                regex += "-" + re.escape(last)
+                regex += f"-{re.escape(last)}"
             in_range = False
         last = c
     else:
         if in_range:
-            regex += "-" + re.escape(c)
+            regex += f"-{re.escape(c)}"
     return regex
 
 

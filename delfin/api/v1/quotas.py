@@ -34,7 +34,7 @@ class QuotaController(wsgi.Controller):
     def index(self, req):
         ctxt = req.environ['delfin.context']
         query_params = {}
-        query_params.update(req.GET)
+        query_params |= req.GET
         # update options  other than filters
         sort_keys, sort_dirs = api_utils.get_sort_params(query_params)
         marker, limit, offset = api_utils.get_pagination_params(query_params)

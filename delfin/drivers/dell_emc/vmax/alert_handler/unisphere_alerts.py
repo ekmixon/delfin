@@ -43,16 +43,15 @@ class AlertHandler(object):
         alert_model_list = []
         for alert in alert_list:
             try:
-                alert_model = dict()
-                alert_model['alert_id'] = self.DEFAULT_UNISPHERE_ALERT_ID
-                alert_model['alert_name'] = self.DEFAULT_UNISPHERE_ALERT_NAME
-
-                alert_model['severity'] = self.SEVERITY_MAP.get(
-                    alert['severity'], constants.Severity.NOT_SPECIFIED)
-
-                # category and type are not part of queried alerts
-                alert_model['category'] = constants.Category.FAULT
-                alert_model['type'] = constants.EventType.EQUIPMENT_ALARM
+                alert_model = {
+                    'alert_id': self.DEFAULT_UNISPHERE_ALERT_ID,
+                    'alert_name': self.DEFAULT_UNISPHERE_ALERT_NAME,
+                    'severity': self.SEVERITY_MAP.get(
+                        alert['severity'], constants.Severity.NOT_SPECIFIED
+                    ),
+                    'category': constants.Category.FAULT,
+                    'type': constants.EventType.EQUIPMENT_ALARM,
+                }
 
                 alert_model['sequence_number'] = alert['alertId']
                 alert_model['occur_time'] = alert['created_date_milliseconds']

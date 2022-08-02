@@ -32,7 +32,7 @@ class PortGroupController(wsgi.Controller):
     def show(self, req, id):
         ctxt = req.environ['delfin.context']
         query_params = {"storage_id": id}
-        query_params.update(req.GET)
+        query_params |= req.GET
         # Update options  other than filters
         sort_keys, sort_dirs = api_utils.get_sort_params(query_params)
         marker, limit, offset = api_utils.get_pagination_params(query_params)
@@ -52,10 +52,7 @@ class PortGroupController(wsgi.Controller):
             ports = db.port_grp_port_rels_get_all(
                 ctxt, filters=params)
 
-            native_port_id_list = []
-            for port in ports:
-                native_port_id_list.append(port['native_port_id'])
-
+            native_port_id_list = [port['native_port_id'] for port in ports]
             port_group['ports'] = native_port_id_list
 
         return port_group_view.build_port_groups(port_groups)

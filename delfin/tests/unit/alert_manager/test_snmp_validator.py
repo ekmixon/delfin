@@ -60,7 +60,7 @@ class TestSNMPValidator(test.TestCase):
         b = random.randint(0, 255)
         c = random.randint(0, 255)
         d = random.randint(0, 255)
-        host = str(a) + '.' + str(b) + '.' + str(c) + '.' + str(d)
+        host = f'{a}.{b}.{c}.{d}'
         # Get a random port
         port = random.randint(1024, 65535)
         # snmpv3
@@ -120,16 +120,17 @@ class TestSNMPValidator(test.TestCase):
             'category': constants.Category.FAULT,
             'severity': constants.Severity.MAJOR,
             'type': constants.EventType.COMMUNICATIONS_ALARM,
-            'location': 'NetworkEntity=%s' % storage['name'],
+            'location': f"NetworkEntity={storage['name']}",
             'description': "SNMP connection to the storage failed. "
-                           "SNMP traps from storage will not be received.",
+            "SNMP traps from storage will not be received.",
             'recovery_advice': "1. The network connection is abnormal. "
-                               "2. SNMP authentication parameters "
-                               "are invalid.",
+            "2. SNMP authentication parameters "
+            "are invalid.",
             'occur_time': mock.ANY,
         }
+
 
         validator._dispatch_snmp_validation_alert(
             context, storage, constants.Category.FAULT)
         base_exporter.AlertExporterManager(). \
-            dispatch.assert_called_once_with(context, alert)
+                dispatch.assert_called_once_with(context, alert)

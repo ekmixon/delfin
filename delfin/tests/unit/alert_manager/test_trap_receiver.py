@@ -260,11 +260,11 @@ class TrapReceiverTestCase(test.TestCase):
                                  'privacy_protocol': 'DES'
                                  }
         mock_alert_source_list.return_value = fakes. \
-            fake_v3_alert_source_list_with_one()
+                fake_v3_alert_source_list_with_one()
         trap_receiver_inst = self._get_trap_receiver()
         trap_receiver_inst.snmp_engine = engine.SnmpEngine()
         alert_source = trap_receiver_inst. \
-            _get_alert_source_by_host('127.0.0.1')
+                _get_alert_source_by_host('127.0.0.1')
         self.assertDictEqual(expected_alert_source, alert_source)
 
     @mock.patch('delfin.db.alert_source_get_all')

@@ -60,7 +60,7 @@ class Database(fixtures.Fixture):
         self.engine.dispose()
         conn = self.engine.connect()
         db_models.BASE.metadata.create_all(self.engine)
-        self._DB = "".join(line for line in conn.connection.iterdump())
+        self._DB = "".join(conn.connection.iterdump())
         self.engine.dispose()
 
     def setUp(self):
@@ -90,7 +90,7 @@ class TestCase(base_test.BaseTestCase):
         self.injected = []
         self._services = []
         # This will be cleaned up by the NestedTempfile fixture
-        lock_path = '/' + self.useFixture(fixtures.TempDir()).path
+        lock_path = f'/{self.useFixture(fixtures.TempDir()).path}'
         self.fixture = self.useFixture(config_fixture.Config(lockutils.CONF))
         self.fixture.config(lock_path=lock_path, group='oslo_concurrency')
         self.fixture.config(
@@ -155,7 +155,7 @@ class TestCase(base_test.BaseTestCase):
     def start_service(self, name, host=None, **kwargs):
         host = host and host or uuidutils.generate_uuid()
         kwargs.setdefault('host', host)
-        kwargs.setdefault('binary', 'delfin-%s' % name)
+        kwargs.setdefault('binary', f'delfin-{name}')
         svc = service.Service.create(**kwargs)
         svc.start()
         self._services.append(svc)
@@ -332,7 +332,7 @@ class TestCase(base_test.BaseTestCase):
         self.assertEqual(conv_and_sort(objs1), conv_and_sort(objs2))
 
     def assert_notify_called(self, mock_notify, calls):
-        for i in range(0, len(calls)):
+        for i in range(len(calls)):
             mock_call = mock_notify.call_args_list[i]
             call = calls[i]
 

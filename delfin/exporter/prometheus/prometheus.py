@@ -82,11 +82,8 @@ class PrometheusExporter(object):
                                         value, timestamp))
 
     def get_file_age(self, path):
-        # Getting ctime of the file/folder
-        # Time will be in seconds
-        ctime = os.stat(path).st_ctime
         # Returning the time
-        return ctime
+        return os.stat(path).st_ctime
 
     def clean_old_metric_files(self, metrics_dir):
         os.chdir(metrics_dir)
@@ -107,10 +104,8 @@ class PrometheusExporter(object):
         except Exception:
             LOG.error('Error while cleaning old metrics files')
         time_stamp = str(datetime.datetime.now().timestamp())
-        temp_file_name = os.path.join(self.metrics_dir,
-                                      time_stamp + ".prom.temp")
-        actual_file_name = os.path.join(self.metrics_dir,
-                                        time_stamp + ".prom")
+        temp_file_name = os.path.join(self.metrics_dir, f"{time_stamp}.prom.temp")
+        actual_file_name = os.path.join(self.metrics_dir, f"{time_stamp}.prom")
         # make a temp  file with current timestamp
         with open(temp_file_name, "w") as f:
             for metric in storage_metrics:

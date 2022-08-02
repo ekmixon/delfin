@@ -35,12 +35,11 @@ class LeaderElectionFactory:
 
         scheduler_mgr = SchedulerManager()
 
-        if plugin == "tooz":
-            # Create callback object
-            callback = ToozLeaderElectionCallback.register(
-                on_leading_callback=scheduler_mgr.start,
-                on_stop_callback=scheduler_mgr.stop)
-
-            return Elector(callback, leader_election_key)
-        else:
+        if plugin != "tooz":
             raise ValueError(plugin)
+        # Create callback object
+        callback = ToozLeaderElectionCallback.register(
+            on_leading_callback=scheduler_mgr.start,
+            on_stop_callback=scheduler_mgr.stop)
+
+        return Elector(callback, leader_election_key)

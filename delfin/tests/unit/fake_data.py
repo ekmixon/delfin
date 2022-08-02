@@ -53,7 +53,7 @@ def fake_storage_pool_create():
 
 
 def fake_expected_storage_pool_create():
-    expected = [
+    return [
         {
             "created_at": "2020-06-10T07:17:08.707356",
             "updated_at": "2020-06-10T07:17:08.707356",
@@ -67,7 +67,7 @@ def fake_expected_storage_pool_create():
             "total_capacity": 26300318136401,
             "used_capacity": 19054536509358,
             "free_capacity": 7245781627043,
-            'subscribed_capacity': 219902325555200
+            'subscribed_capacity': 219902325555200,
         },
         {
             "created_at": "2020-06-10T07:17:08.707359",
@@ -83,9 +83,8 @@ def fake_expected_storage_pool_create():
             "used_capacity": 19054536509358,
             "free_capacity": 7245781627043,
             'subscribed_capacity': 219902325555200,
-        }
+        },
     ]
-    return expected
 
 
 def fake_storage_host_initiator_create():
@@ -108,7 +107,7 @@ def fake_storage_host_initiator_create():
 
 
 def fake_expected_storage_host_initiator_create():
-    expected = [
+    return [
         {
             "created_at": "2020-06-10T07:17:08.707356",
             "updated_at": "2020-06-10T07:17:08.707356",
@@ -121,10 +120,8 @@ def fake_expected_storage_host_initiator_create():
             "native_storage_host_initiator_id": "storage_host_initiator_1",
             "native_storage_host_id": "storage_host_1",
             "wwn": "wwn1",
-
         },
     ]
-    return expected
 
 
 def fake_storage_host_create():
@@ -146,7 +143,7 @@ def fake_storage_host_create():
 
 
 def fake_expected_storage_host_create():
-    expected = [
+    return [
         {
             "created_at": "2020-06-10T07:17:08.707356",
             "updated_at": "2020-06-10T07:17:08.707356",
@@ -160,7 +157,6 @@ def fake_expected_storage_host_create():
             "native_storage_host_id": "storage_host_1",
         },
     ]
-    return expected
 
 
 def fake_storage_host_group_create():
@@ -179,7 +175,7 @@ def fake_storage_host_group_create():
 
 
 def fake_expected_storage_host_group_create():
-    expected = [
+    return [
         {
             "created_at": "2020-06-10T07:17:08.707356",
             "updated_at": "2020-06-10T07:17:08.707356",
@@ -190,7 +186,6 @@ def fake_expected_storage_host_group_create():
             "native_storage_host_group_id": "storage_host_group_1",
         },
     ]
-    return expected
 
 
 def fake_port_group_create():
@@ -209,7 +204,7 @@ def fake_port_group_create():
 
 
 def fake_expected_port_group_create():
-    expected = [
+    return [
         {
             "created_at": "2020-06-10T07:17:08.707356",
             "updated_at": "2020-06-10T07:17:08.707356",
@@ -220,7 +215,6 @@ def fake_expected_port_group_create():
             "native_port_group_id": "port_group_1",
         },
     ]
-    return expected
 
 
 def fake_volume_group_create():
@@ -239,7 +233,7 @@ def fake_volume_group_create():
 
 
 def fake_expected_volume_groups_create():
-    expected = [
+    return [
         {
             "created_at": "2020-06-10T07:17:08.707356",
             "updated_at": "2020-06-10T07:17:08.707356",
@@ -250,7 +244,6 @@ def fake_expected_volume_groups_create():
             "native_volume_group_id": "volume_group_1",
         },
     ]
-    return expected
 
 
 def fake_masking_view_create():
@@ -272,7 +265,7 @@ def fake_masking_view_create():
 
 
 def fake_expected_masking_views_create():
-    expected = [
+    return [
         {
             "created_at": "2020-06-10T07:17:08.707356",
             "updated_at": "2020-06-10T07:17:08.707356",
@@ -289,4 +282,3 @@ def fake_expected_masking_views_create():
             "native_masking_view_id": "masking_view_1",
         },
     ]
-    return expected

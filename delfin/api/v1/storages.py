@@ -53,7 +53,7 @@ class StorageController(wsgi.Controller):
     def index(self, req):
         ctxt = req.environ['delfin.context']
         query_params = {}
-        query_params.update(req.GET)
+        query_params |= req.GET
         # update options  other than filters
         sort_keys, sort_dirs = api_utils.get_sort_params(query_params)
         marker, limit, offset = api_utils.get_pagination_params(query_params)
@@ -82,7 +82,7 @@ class StorageController(wsgi.Controller):
             if access_info_dict.get(access) is not None:
                 host = access_info_dict.get(access).get('host')
                 break
-        lock_name = 'storage-create-' + host
+        lock_name = f'storage-create-{host}'
         lock = coordination.Lock(lock_name)
 
         with lock:
@@ -130,9 +130,9 @@ class StorageController(wsgi.Controller):
 
         for subclass in resources.StorageResourceTask.__subclasses__():
             self.task_rpcapi.remove_storage_resource(
-                ctxt,
-                storage['id'],
-                subclass.__module__ + '.' + subclass.__name__)
+                ctxt, storage['id'], f'{subclass.__module__}.{subclass.__name__}'
+            )
+
 
         for subclass in task_telemetry.TelemetryTask.__subclasses__():
             self.task_rpcapi.remove_telemetry_instances(ctxt,
@@ -161,16 +161,15 @@ class StorageController(wsgi.Controller):
             try:
                 _set_synced_if_ok(ctxt, storage['id'], resource_count)
             except exception.InvalidInput as e:
-                LOG.warn('Can not start new sync task for %s, reason is %s'
-                         % (storage['id'], e.msg))
+                LOG.warn(f"Can not start new sync task for {storage['id']}, reason is {e.msg}")
                 continue
             else:
-                for subclass in \
-                        resources.StorageResourceTask.__subclasses__():
+                for subclass in resources.StorageResourceTask.__subclasses__():
                     self.task_rpcapi.sync_storage_resource(
                         ctxt,
                         storage['id'],
-                        subclass.__module__ + '.' + subclass.__name__)
+                        f'{subclass.__module__}.{subclass.__name__}',
+                    )
 
     @wsgi.response(202)
     def sync(self, req, id):
@@ -185,9 +184,8 @@ class StorageController(wsgi.Controller):
         _set_synced_if_ok(ctxt, storage['id'], resource_count)
         for subclass in resources.StorageResourceTask.__subclasses__():
             self.task_rpcapi.sync_storage_resource(
-                ctxt,
-                storage['id'],
-                subclass.__module__ + '.' + subclass.__name__)
+                ctxt, storage['id'], f'{subclass.__module__}.{subclass.__name__}'
+            )
 
     def _storage_exist(self, context, access_info):
         access_info_dict = copy.deepcopy(access_info)
@@ -204,8 +202,7 @@ class StorageController(wsgi.Controller):
                                                   filters=access_info_dict)
         for _access_info in access_info_list:
             try:
-                storage = db.storage_get(context, _access_info['storage_id'])
-                if storage:
+                if storage := db.storage_get(context, _access_info['storage_id']):
                     LOG.error("Storage %s has same access "
                               "information." % storage['id'])
                     return True
@@ -248,8 +245,7 @@ def _set_synced_if_ok(context, storage_id, resource_count):
     try:
         storage = db.storage_get(context, storage_id)
     except exception.StorageNotFound:
-        msg = 'Storage %s not found when try to set sync_status' \
-              % storage_id
+        msg = f'Storage {storage_id} not found when try to set sync_status'
         raise exception.InvalidInput(message=msg)
     else:
         last_update = storage['updated_at'] or storage['created_at']
@@ -274,7 +270,7 @@ def _create_performance_monitoring_task(context, storage_id, capabilities):
             or not bool(capabilities.get('resource_metrics')):
         raise exception.EmptyResourceMetrics()
 
-    task = dict()
+    task = {}
     task.update(storage_id=storage_id)
     task.update(args=capabilities.get('resource_metrics'))
     task.update(interval=CONF.telemetry.performance_collection_interval)

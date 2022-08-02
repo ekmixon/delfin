@@ -31,8 +31,7 @@ class AlertProcessorTestCase(unittest.TestCase):
     def _get_alert_processor(self):
         alert_processor_class = importutils.import_class(
             self.ALERT_PROCESSOR_CLASS)
-        alert_processor = alert_processor_class()
-        return alert_processor
+        return alert_processor_class()
 
     @mock.patch('delfin.db.storage_get')
     @mock.patch('delfin.drivers.api.API.parse_alert')

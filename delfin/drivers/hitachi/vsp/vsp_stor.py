@@ -94,9 +94,9 @@ class HitachiVspDriver(driver.StorageDriver):
         if self.rest_handler.device_model in consts.SUPPORTED_VSP_SERIES:
             capacity_json = self.rest_handler.get_capacity()
             free_capacity = capacity_json.get("total").get("freeSpace") * \
-                units.Ki
+                    units.Ki
             total_capacity = \
-                capacity_json.get("total").get("totalCapacity") * units.Ki
+                    capacity_json.get("total").get("totalCapacity") * units.Ki
         else:
             free_capacity = 0
             total_capacity = 0
@@ -105,7 +105,7 @@ class HitachiVspDriver(driver.StorageDriver):
                 pools = pools_info.get('data')
                 for pool in pools:
                     total_cap = \
-                        int(pool.get(
+                            int(pool.get(
                             'totalPoolCapacity')) * units.Mi
                     free_cap = int(
                         pool.get(
@@ -116,10 +116,9 @@ class HitachiVspDriver(driver.StorageDriver):
         status = constants.StorageStatus.OFFLINE
         if firmware_version is not None:
             status = constants.StorageStatus.NORMAL
-        system_name = '%s_%s' % (self.rest_handler.device_model,
-                                 self.rest_handler.rest_host)
+        system_name = f'{self.rest_handler.device_model}_{self.rest_handler.rest_host}'
 
-        s = {
+        return {
             'name': system_name,
             'vendor': 'Hitachi',
             'description': 'Hitachi VSP Storage',
@@ -131,9 +130,8 @@ class HitachiVspDriver(driver.StorageDriver):
             'raw_capacity': int(total_capacity),
             'total_capacity': int(total_capacity),
             'used_capacity': int(total_capacity - free_capacity),
-            'free_capacity': int(free_capacity)
+            'free_capacity': int(free_capacity),
         }
-        return s
 
     def list_storage_pools(self, context):
         try:
@@ -147,7 +145,7 @@ class HitachiVspDriver(driver.StorageDriver):
                 )
                 storage_type = constants.StorageType.BLOCK
                 total_cap = \
-                    int(pool.get('totalPoolCapacity')) * units.Mi
+                        int(pool.get('totalPoolCapacity')) * units.Mi
                 free_cap = int(
                     pool.get('availableVolumeCapacity')) * units.Mi
                 used_cap = total_cap - free_cap
@@ -166,13 +164,11 @@ class HitachiVspDriver(driver.StorageDriver):
 
             return pool_list
         except exception.DelfinException as err:
-            err_msg = "Failed to get pool metrics from hitachi vsp: %s" % \
-                      (six.text_type(err))
+            err_msg = f"Failed to get pool metrics from hitachi vsp: {six.text_type(err)}"
             LOG.error(err_msg)
             raise err
         except Exception as e:
-            err_msg = "Failed to get pool metrics from hitachi vsp: %s" % \
-                      (six.text_type(e))
+            err_msg = f"Failed to get pool metrics from hitachi vsp: {six.text_type(e)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -184,17 +180,17 @@ class HitachiVspDriver(driver.StorageDriver):
         is_first = True
         for i in range(0, len(hex_lun_id), 2):
             if is_first is True:
-                result = '%s' % (hex_lun_id[i:i + 2])
+                result = f'{hex_lun_id[i:i + 2]}'
                 is_first = False
             else:
-                result = '%s:%s' % (result, hex_lun_id[i:i + 2])
+                result = f'{result}:{hex_lun_id[i:i + 2]}'
         return result
 
     def list_volumes(self, context):
         head_id = 0
         is_end = False
         volume_list = []
-        while is_end is False:
+        while not is_end:
             is_end = self.get_volumes_paginated(volume_list, head_id)
             head_id += consts.LDEV_NUMBER_OF_PER_REQUEST
         return volume_list
@@ -203,6 +199,9 @@ class HitachiVspDriver(driver.StorageDriver):
         try:
             volumes_info = self.rest_handler.get_volumes(head_id)
             volumes = volumes_info.get('data')
+            # Because there is only subscribed capacity in device,so free
+            # capacity always 0
+            free_cap = 0
             for volume in volumes:
                 if volume.get('emulationType') == 'NOT DEFINED':
                     return True
@@ -210,35 +209,24 @@ class HitachiVspDriver(driver.StorageDriver):
                 compressed = False
                 deduplicated = False
                 if volume.get('dataReductionMode') == \
-                        'compression_deduplication':
+                            'compression_deduplication':
                     deduplicated = True
                     compressed = True
                 if volume.get('dataReductionMode') == 'compression':
                     compressed = True
-                if volume.get('status') == 'NML':
-                    status = 'normal'
-                else:
-                    status = 'abnormal'
-
+                status = 'normal' if volume.get('status') == 'NML' else 'abnormal'
                 vol_type = constants.VolumeType.THICK
                 for voltype in volume.get('attributes'):
                     if voltype == 'HTI':
                         vol_type = constants.VolumeType.THIN
 
                 total_cap = \
-                    int(volume.get('blockCapacity')) * consts.BLOCK_SIZE
+                        int(volume.get('blockCapacity')) * consts.BLOCK_SIZE
                 used_cap = \
-                    int(volume.get('blockCapacity')) * consts.BLOCK_SIZE
-                # Because there is only subscribed capacity in device,so free
-                # capacity always 0
-                free_cap = 0
+                        int(volume.get('blockCapacity')) * consts.BLOCK_SIZE
                 native_volume_id = HitachiVspDriver.to_vsp_lun_id_format(
                     volume.get('ldevId'))
-                if volume.get('label'):
-                    name = volume.get('label')
-                else:
-                    name = native_volume_id
-
+                name = volume.get('label') or native_volume_id
                 v = {
                     'name': name,
                     'storage_id': self.storage_id,
@@ -257,13 +245,12 @@ class HitachiVspDriver(driver.StorageDriver):
                 volume_list.append(v)
             return False
         except exception.DelfinException as err:
-            err_msg = "Failed to get volumes metrics from hitachi vsp: %s" % \
-                      (six.text_type(err))
+            err_msg = f"Failed to get volumes metrics from hitachi vsp: {six.text_type(err)}"
+
             LOG.error(err_msg)
             raise err
         except Exception as e:
-            err_msg = "Failed to get volumes metrics from hitachi vsp: %s" % \
-                      (six.text_type(e))
+            err_msg = f"Failed to get volumes metrics from hitachi vsp: {six.text_type(e)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -287,8 +274,7 @@ class HitachiVspDriver(driver.StorageDriver):
                     controller_list.append(controller_result)
             return controller_list
         except Exception as err:
-            err_msg = "Failed to get controller attributes from vsp: %s" % \
-                      (six.text_type(err))
+            err_msg = f"Failed to get controller attributes from vsp: {six.text_type(err)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -316,8 +302,8 @@ class HitachiVspDriver(driver.StorageDriver):
                         ipv6 = iscsi_port.get(
                             'ipv6LinkLocalAddress', {}).get("address")
                 speed = HitachiVspDriver.AUTO_PORT_SPEED if \
-                    port.get('portSpeed') == 'AUT' else \
-                    int(port.get('portSpeed')[:-1]) * units.Gi
+                        port.get('portSpeed') == 'AUT' else \
+                        int(port.get('portSpeed')[:-1]) * units.Gi
                 if port.get('portType') == 'FIBRE':
                     wwn = port.get('wwn')
                     if wwn:
@@ -344,8 +330,7 @@ class HitachiVspDriver(driver.StorageDriver):
                 port_list.append(port_result)
             return port_list
         except Exception as err:
-            err_msg = "Failed to get ports attributes from vsp: %s" % \
-                      (six.text_type(err))
+            err_msg = f"Failed to get ports attributes from vsp: {six.text_type(err)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -360,7 +345,7 @@ class HitachiVspDriver(driver.StorageDriver):
                     if disk.get('status' == 'NML'):
                         status = constants.DiskStatus.NORMAL
                     physical_type = \
-                        HitachiVspDriver.DISK_PHYSICAL_TYPE_MAP.get(
+                            HitachiVspDriver.DISK_PHYSICAL_TYPE_MAP.get(
                             disk.get('driveTypeName'),
                             constants.DiskPhysicalType.UNKNOWN)
                     logical_type = HitachiVspDriver.DISK_LOGIC_TYPE_MAP.get(
@@ -383,8 +368,7 @@ class HitachiVspDriver(driver.StorageDriver):
             return disk_list
 
         except Exception as err:
-            err_msg = "Failed to get disk attributes from : %s" % \
-                      (six.text_type(err))
+            err_msg = f"Failed to get disk attributes from : {six.text_type(err)}"
             raise exception.InvalidResults(err_msg)
 
     @staticmethod
@@ -427,8 +411,8 @@ class HitachiVspDriver(driver.StorageDriver):
             HitachiVspDriver.parse_queried_alerts(alerts_info_dkc,
                                                   alert_list, query_para)
         else:
-            err_msg = "list_alerts is not supported in model %s" % \
-                      self.rest_handler.device_model
+            err_msg = f"list_alerts is not supported in model {self.rest_handler.device_model}"
+
             LOG.error(err_msg)
             raise NotImplementedError(err_msg)
 
@@ -443,8 +427,7 @@ class HitachiVspDriver(driver.StorageDriver):
     @staticmethod
     def parse_alert(context, alert):
         try:
-            alert_model = dict()
-            alert_model['alert_id'] = alert.get(HitachiVspDriver.REFCODE_OID)
+            alert_model = {'alert_id': alert.get(HitachiVspDriver.REFCODE_OID)}
             alert_model['alert_name'] = alert.get(HitachiVspDriver.DESC_OID)
             severity = HitachiVspDriver.TRAP_ALERT_LEVEL_MAP.get(
                 alert.get(HitachiVspDriver.OID_SEVERITY),
@@ -453,8 +436,8 @@ class HitachiVspDriver(driver.StorageDriver):
             alert_model['severity'] = severity
             alert_model['category'] = constants.Category.FAULT
             alert_model['type'] = constants.EventType.EQUIPMENT_ALARM
-            aler_time = '%s%s' % (alert.get(HitachiVspDriver.TRAP_DATE_OID),
-                                  alert.get(HitachiVspDriver.TRAP_TIME_OID))
+            aler_time = f'{alert.get(HitachiVspDriver.TRAP_DATE_OID)}{alert.get(HitachiVspDriver.TRAP_TIME_OID)}'
+
             pattern = '%Y/%m/%d%H:%M:%S'
             occur_time = time.strptime(aler_time, pattern)
             alert_model['occur_time'] = int(time.mktime(occur_time) *

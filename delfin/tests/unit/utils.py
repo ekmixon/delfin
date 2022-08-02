@@ -26,17 +26,13 @@ def check_isinstance(obj, cls):
 
 
 def get_db_schema_attributes_list(schema):
-    db_attrib_lst = []
-    for i in schema.__dict__.keys():
-        if not i.startswith('_'):
-            db_attrib_lst.append(i)
+    db_attrib_lst = [i for i in schema.__dict__.keys() if not i.startswith('_')]
     return sorted(db_attrib_lst)
 
 
 def validate_db_schema_model(got, model):
     try:
-        res = check_isinstance(got, model)
-        if res:
+        if res := check_isinstance(got, model):
             attributes = get_db_schema_attributes_list(model)
             lst = sorted(list(got.keys()))
             case.assertListEqual(attributes, lst)

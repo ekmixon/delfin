@@ -34,7 +34,7 @@ class ComponentHandler(object):
         status = constants.StorageStatus.NORMAL
         raw_cap = self.handle_disk_capacity()
         pool_capacity = self.handle_pool_capacity()
-        result = {
+        return {
             'name': domain[0].get('node'),
             'vendor': consts.EMCVNX_VENDOR,
             'model': agent.get('model'),
@@ -44,9 +44,8 @@ class ComponentHandler(object):
             'total_capacity': pool_capacity.get('total_capacity'),
             'raw_capacity': int(raw_cap),
             'used_capacity': pool_capacity.get('used_capacity'),
-            'free_capacity': pool_capacity.get('free_capacity')
+            'free_capacity': pool_capacity.get('free_capacity'),
         }
-        return result
 
     def list_storage_pools(self, storage_id):
         pools = self.navi_handler.get_pools()
@@ -78,8 +77,7 @@ class ComponentHandler(object):
                         'free_capacity': int(free_cap)
                     }
                     pool_list.append(p)
-        raid_groups = self.handle_raid_groups(storage_id)
-        if raid_groups:
+        if raid_groups := self.handle_raid_groups(storage_id):
             pool_list.extend(raid_groups)
         return pool_list
 
@@ -98,17 +96,16 @@ class ComponentHandler(object):
                         raid.get("logical_capacity_blocks"))
                     used_cap = total_cap - free_cap
                     p = {
-                        'name': 'RAID Group %s' % raid.get('raidgroup_id'),
+                        'name': f"RAID Group {raid.get('raidgroup_id')}",
                         'storage_id': storage_id,
-                        'native_storage_pool_id': '%s%s' % (
-                            consts.RAID_GROUP_ID_PREFIX,
-                            raid.get('raidgroup_id')),
+                        'native_storage_pool_id': f"{consts.RAID_GROUP_ID_PREFIX}{raid.get('raidgroup_id')}",
                         'status': status,
                         'storage_type': constants.StorageType.BLOCK,
                         'total_capacity': int(total_cap * (units.Ki / 2)),
                         'used_capacity': int(used_cap * (units.Ki / 2)),
-                        'free_capacity': int(free_cap * (units.Ki / 2))
+                        'free_capacity': int(free_cap * (units.Ki / 2)),
                     }
+
                     raid_list.append(p)
         return raid_list
 
@@ -130,38 +127,36 @@ class ComponentHandler(object):
                     total_cap = float(
                         volume.get('user_capacity_gbs')) * units.Gi
                     free_cap = total_cap - used_cap
-                    if free_cap < 0:
-                        free_cap = 0
+                    free_cap = max(free_cap, 0)
                     v = {
                         'name': volume.get('name'),
                         'storage_id': storage_id,
                         'status': status,
                         'native_volume_id': str(volume.get('lun_id')),
-                        'native_storage_pool_id': pool_ids.get(orig_pool_name,
-                                                               ''),
+                        'native_storage_pool_id': pool_ids.get(orig_pool_name, ''),
                         'type': vol_type,
                         'total_capacity': int(total_cap),
-                        'used_capacity': int(used_cap),
+                        'used_capacity': used_cap,
                         'free_capacity': int(free_cap),
                         'compressed': consts.VOL_COMPRESSED_MAP.get(
-                            volume.get('is_compressed').lower()),
-                        'wwn': volume.get('uid')
+                            volume.get('is_compressed').lower()
+                        ),
+                        'wwn': volume.get('uid'),
                     }
+
                     volume_list.append(v)
         return volume_list
 
     def handle_volume_from_raid_group(self, storage_id):
         volume_list = []
-        volumes = self.navi_handler.get_all_lun()
-        if volumes:
+        if volumes := self.navi_handler.get_all_lun():
             for volume in volumes:
                 if volume.get('raidgroup_id') and (
                         volume.get('raidgroup_id') != 'N/A' or volume.get(
                         'is_meta_lun') == 'YES'):
                     pool_id = None
                     if volume.get('raidgroup_id') != 'N/A':
-                        pool_id = '%s%s' % (consts.RAID_GROUP_ID_PREFIX,
-                                            volume.get('raidgroup_id'))
+                        pool_id = f"{consts.RAID_GROUP_ID_PREFIX}{volume.get('raidgroup_id')}"
                     status = consts.STATUS_MAP.get(
                         volume.get('state'),
                         constants.StoragePoolStatus.OFFLINE)
@@ -175,15 +170,15 @@ class ComponentHandler(object):
                         'name': volume.get('name'),
                         'storage_id': storage_id,
                         'status': status,
-                        'native_volume_id': str(
-                            volume.get('logical_unit_number')),
+                        'native_volume_id': str(volume.get('logical_unit_number')),
                         'native_storage_pool_id': pool_id,
                         'type': vol_type,
                         'total_capacity': int(total_cap),
                         'used_capacity': int(used_cap),
-                        'free_capacity': int(free_cap),
-                        'wwn': volume.get('uid')
+                        'free_capacity': free_cap,
+                        'wwn': volume.get('uid'),
                     }
+
                     volume_list.append(v)
         return volume_list
 
@@ -197,8 +192,7 @@ class ComponentHandler(object):
                     pool_ids[pool.get('pool_name')] = pool.get('pool_id')
         volume_list = self.handle_volume_from_pool(volumes, pool_ids,
                                                    storage_id)
-        raid_volumes = self.handle_volume_from_raid_group(storage_id)
-        if raid_volumes:
+        if raid_volumes := self.handle_volume_from_raid_group(storage_id):
             volume_list.extend(raid_volumes)
         return volume_list
 
@@ -268,17 +262,16 @@ class ComponentHandler(object):
     def analyse_speed(self, speed_value):
         speed = 0
         try:
-            speeds = re.findall("\\d+", speed_value)
-            if speeds:
+            if speeds := re.findall("\\d+", speed_value):
                 speed = int(speeds[0])
             if 'Gbps' in speed_value:
-                speed = speed * units.G
+                speed *= units.G
             elif 'Mbps' in speed_value:
                 speed = speed * units.M
             elif 'Kbps' in speed_value:
                 speed = speed * units.k
         except Exception as err:
-            err_msg = "analyse speed error: %s" % (six.text_type(err))
+            err_msg = f"analyse speed error: {six.text_type(err)}"
             LOG.error(err_msg)
         return speed
 
@@ -322,23 +315,20 @@ class ComponentHandler(object):
         for port in (ports or []):
             port_id = port.get('sp_port_id')
             sp_name = port.get('sp_name').replace('SP ', '')
-            name = '%s-%s' % (sp_name, port_id)
-            location = 'Slot %s%s,Port %s' % (
-                sp_name, port.get('i/o_module_slot'),
-                port.get('physical_port_id'))
+            name = f'{sp_name}-{port_id}'
+            location = f"Slot {sp_name}{port.get('i/o_module_slot')},Port {port.get('physical_port_id')}"
+
             mac_address = port.get('mac_address')
             if mac_address == 'Not Applicable':
                 mac_address = None
-            module_key = '%s_%s' % (
-                sp_name, port.get('i/o_module_slot'))
+            module_key = f"{sp_name}_{port.get('i/o_module_slot')}"
             if io_configs:
                 type = io_configs.get(module_key, '')
 
             ipv4 = None
             ipv4_mask = None
             if iscsi_port_map:
-                iscsi_port = iscsi_port_map.get(name)
-                if iscsi_port:
+                if iscsi_port := iscsi_port_map.get(name):
                     ipv4 = iscsi_port.get('ip_address')
                     ipv4_mask = iscsi_port.get('subnet_mask')
             port_model = {
@@ -380,20 +370,16 @@ class ComponentHandler(object):
                 sps = bus_port.get('sps')
                 for sp in (sps or []):
                     sp_name = sp.replace('sp', '').upper()
-                    name = '%s-%s' % (sp_name,
-                                      bus_port.get('bus_name'))
-                    location = '%s %s,Port %s' % (
-                        bus_port.get('i/o_module_slot'), sp_name,
-                        bus_port.get('physical_port_id'))
+                    name = f"{sp_name}-{bus_port.get('bus_name')}"
+                    location = f"{bus_port.get('i/o_module_slot')} {sp_name},Port {bus_port.get('physical_port_id')}"
+
                     native_port_id = location.replace(' ', '')
                     native_port_id = native_port_id.replace(',', '')
-                    module_key = '%s_%s' % (
-                        sp_name, bus_port.get('i/o_module_slot'))
+                    module_key = f"{sp_name}_{bus_port.get('i/o_module_slot')}"
                     if io_configs:
                         type = io_configs.get(module_key, '')
                     if bus_port_state_map:
-                        port_state_key = '%s_%s' % (
-                            sp_name, bus_port.get('physical_port_id'))
+                        port_state_key = f"{sp_name}_{bus_port.get('physical_port_id')}"
                         state = bus_port_state_map.get(port_state_key,
                                                        '')
                     port_model = {
@@ -429,6 +415,6 @@ class ComponentHandler(object):
         iscsi_port_map = {}
         iscsi_ports = self.navi_handler.get_iscsi_ports()
         for iscsi_port in (iscsi_ports or []):
-            name = '%s-%s' % (iscsi_port.get('sp'), iscsi_port.get('port_id'))
+            name = f"{iscsi_port.get('sp')}-{iscsi_port.get('port_id')}"
             iscsi_port_map[name] = iscsi_port
         return iscsi_port_map

@@ -145,9 +145,7 @@ class FakeStorageDriver(driver.StorageDriver):
 
         sn = six.text_type(uuidutils.generate_uuid())
         try:
-            # use existing sn if already registered storage
-            storage = db.storage_get(context, self.storage_id)
-            if storage:
+            if storage := db.storage_get(context, self.storage_id):
                 sn = storage['serial_number']
         except exception.StorageNotFound:
             LOG.debug('Registering new storage')
@@ -181,15 +179,16 @@ class FakeStorageDriver(driver.StorageDriver):
         for idx in range(rd_pools_count):
             total, used, free = self._get_random_capacity()
             p = {
-                "name": "storagePool_" + str(idx),
+                "name": f"storagePool_{str(idx)}",
                 "storage_id": self.storage_id,
-                "native_storage_pool_id": "storagePool_" + str(idx),
+                "native_storage_pool_id": f"storagePool_{str(idx)}",
                 "description": "Fake Pool",
                 "status": "normal",
                 "total_capacity": total,
                 "used_capacity": used,
                 "free_capacity": free,
             }
+
             pool_list.append(p)
         return pool_list
 
@@ -214,21 +213,22 @@ class FakeStorageDriver(driver.StorageDriver):
         LOG.info("###########fake_controllers for %s: %d" %
                  (self.storage_id, rd_controllers_count))
         ctrl_list = []
+        cpu = ["Intel Xenon", "Intel Core ix", "ARM"]
         for idx in range(rd_controllers_count):
             total, used, free = self._get_random_capacity()
-            cpu = ["Intel Xenon", "Intel Core ix", "ARM"]
             sts = list(constants.ControllerStatus.ALL)
             sts_len = len(constants.ControllerStatus.ALL) - 1
             c = {
-                "name": "controller_" + str(idx),
+                "name": f"controller_{str(idx)}",
                 "storage_id": self.storage_id,
-                "native_controller_id": "controller_" + str(idx),
-                "location": "loc_" + str(random.randint(0, 99)),
+                "native_controller_id": f"controller_{str(idx)}",
+                "location": f"loc_{random.randint(0, 99)}",
                 "status": sts[random.randint(0, sts_len)],
                 "memory_size": total,
                 "cpu_info": cpu[random.randint(0, 2)],
-                "soft_version": "ver_" + str(random.randint(0, 999)),
+                "soft_version": f"ver_{random.randint(0, 999)}",
             }
+
             ctrl_list.append(c)
         return ctrl_list
 
@@ -248,28 +248,25 @@ class FakeStorageDriver(driver.StorageDriver):
             logic_type = list(constants.PortLogicalType.ALL)
             logic_type_len = len(constants.PortLogicalType.ALL) - 1
             c = {
-                "name": "port_" + str(idx),
+                "name": f"port_{str(idx)}",
                 "storage_id": self.storage_id,
-                "native_port_id": "port_" + str(idx),
-                "location": "location_" + str(random.randint(0, 99)),
-                "connection_status": conn_sts[
-                    random.randint(0, conn_sts_len)],
-                "health_status": health_sts[
-                    random.randint(0, health_sts_len)],
-                "type": port_type[
-                    random.randint(0, port_type_len)],
-                "logical_type": logic_type[
-                    random.randint(0, logic_type_len)],
+                "native_port_id": f"port_{str(idx)}",
+                "location": f"location_{random.randint(0, 99)}",
+                "connection_status": conn_sts[random.randint(0, conn_sts_len)],
+                "health_status": health_sts[random.randint(0, health_sts_len)],
+                "type": port_type[random.randint(0, port_type_len)],
+                "logical_type": logic_type[random.randint(0, logic_type_len)],
                 "speed": normal,
                 "max_speed": max_s,
-                "native_parent_id": "parent_id_" + str(random.randint(0, 99)),
-                "wwn": "wwn_" + str(random.randint(0, 9999)),
-                "mac_address": "mac_" + str(random.randint(0, 9999)),
+                "native_parent_id": f"parent_id_{random.randint(0, 99)}",
+                "wwn": f"wwn_{random.randint(0, 9999)}",
+                "mac_address": f"mac_{random.randint(0, 9999)}",
                 "ipv4": "0.0.0.0",
                 "ipv4_mask": "255.255.255.0",
                 "ipv6": "0",
                 "ipv6_mask": "::",
             }
+
             port_list.append(c)
         return port_list
 
@@ -278,9 +275,9 @@ class FakeStorageDriver(driver.StorageDriver):
         LOG.info("###########fake_disks for %s: %d" % (self.storage_id,
                                                        rd_disks_count))
         disk_list = []
+        manufacturer = ["Intel", "Seagate", "WD", "Crucial", "HP"]
         for idx in range(rd_disks_count):
             max_s, normal, remain = self._get_random_capacity()
-            manufacturer = ["Intel", "Seagate", "WD", "Crucial", "HP"]
             sts = list(constants.DiskStatus.ALL)
             sts_len = len(constants.DiskStatus.ALL) - 1
             physical_type = list(constants.DiskPhysicalType.ALL)
@@ -288,23 +285,25 @@ class FakeStorageDriver(driver.StorageDriver):
             logic_type = list(constants.DiskLogicalType.ALL)
             logic_type_len = len(constants.DiskLogicalType.ALL) - 1
             c = {
-                "name": "disk_" + str(idx),
+                "name": f"disk_{str(idx)}",
                 "storage_id": self.storage_id,
-                "native_disk_id": "disk_" + str(idx),
-                "serial_number": "serial_" + str(random.randint(0, 9999)),
+                "native_disk_id": f"disk_{str(idx)}",
+                "serial_number": f"serial_{random.randint(0, 9999)}",
                 "manufacturer": manufacturer[random.randint(0, 4)],
-                "model": "model_" + str(random.randint(0, 9999)),
-                "firmware": "firmware_" + str(random.randint(0, 9999)),
+                "model": f"model_{random.randint(0, 9999)}",
+                "firmware": f"firmware_{random.randint(0, 9999)}",
                 "speed": normal,
                 "capacity": max_s,
                 "status": sts[random.randint(0, sts_len)],
                 "physical_type": physical_type[
-                    random.randint(0, physical_type_len)],
+                    random.randint(0, physical_type_len)
+                ],
                 "logical_type": logic_type[random.randint(0, logic_type_len)],
                 "health_score": random.randint(0, 100),
-                "native_diskgroup_id": "dg_id_" + str(random.randint(0, 99)),
-                "location": "location_" + str(random.randint(0, 99)),
+                "native_diskgroup_id": f"dg_id_{random.randint(0, 99)}",
+                "location": f"location_{random.randint(0, 99)}",
             }
+
             disk_list.append(c)
         return disk_list
 
@@ -313,6 +312,7 @@ class FakeStorageDriver(driver.StorageDriver):
         LOG.info("###########fake_quotas for %s: %d"
                  % (self.storage_id, rd_quotas_count))
         quota_list = []
+        user_group = ['usr_', 'grp_']
         for idx in range(rd_quotas_count):
             qtype = list(constants.QuotaType.ALL)
             qtype_len = len(constants.QuotaType.ALL) - 1
@@ -321,15 +321,12 @@ class FakeStorageDriver(driver.StorageDriver):
             fhlimit = random.randint(max_cap * 8, max_cap * 9)
             slimit = random.randint(max_cap * 7000, max_cap * 8000)
             hlimit = random.randint(max_cap * 8000, max_cap * 9000)
-            user_group = ['usr_', 'grp_']
             q = {
-                "native_quota_id": "quota_" + str(idx),
+                "native_quota_id": f"quota_{str(idx)}",
                 "type": qtype[random.randint(0, qtype_len)],
                 "storage_id": self.storage_id,
-                "native_filesystem_id": "quota_"
-                                        + str(random.randint(0, 99)),
-                "native_qtree_id": "qtree_"
-                                   + str(random.randint(0, 99)),
+                "native_filesystem_id": "quota_" + str(random.randint(0, 99)),
+                "native_qtree_id": "qtree_" + str(random.randint(0, 99)),
                 "capacity_hard_limit": hlimit,
                 "capacity_soft_limit": slimit,
                 "file_hard_limit": fhlimit,
@@ -337,8 +334,9 @@ class FakeStorageDriver(driver.StorageDriver):
                 "file_count": random.randint(0, max_cap * 10),
                 "used_capacity": random.randint(0, max_cap * 10000),
                 "user_group_name": user_group[random.randint(0, 1)]
-                                   + str(random.randint(0, 99)),
+                + str(random.randint(0, 99)),
             }
+
             quota_list.append(q)
         return quota_list
 
@@ -347,9 +345,9 @@ class FakeStorageDriver(driver.StorageDriver):
         LOG.info("###########fake_filesystems for %s: %d"
                  % (self.storage_id, rd_filesystems_count))
         filesystem_list = []
+        boolean = [True, False]
         for idx in range(rd_filesystems_count):
             total, used, free = self._get_random_capacity()
-            boolean = [True, False]
             sts = list(constants.FilesystemStatus.ALL)
             sts_len = len(constants.FilesystemStatus.ALL) - 1
             worm = list(constants.WORMType.ALL)
@@ -359,10 +357,10 @@ class FakeStorageDriver(driver.StorageDriver):
             security = list(constants.NASSecurityMode.ALL)
             security_len = len(constants.NASSecurityMode.ALL) - 1
             f = {
-                "name": "filesystem_" + str(idx),
+                "name": f"filesystem_{str(idx)}",
                 "storage_id": self.storage_id,
-                "native_filesystem_id": "filesystem_" + str(idx),
-                "native_pool_id": "storagePool_" + str(idx),
+                "native_filesystem_id": f"filesystem_{str(idx)}",
+                "native_pool_id": f"storagePool_{str(idx)}",
                 "status": sts[random.randint(0, sts_len)],
                 "type": alloc_type[random.randint(0, alloc_type_len)],
                 "security_mode": security[random.randint(0, security_len)],
@@ -373,6 +371,7 @@ class FakeStorageDriver(driver.StorageDriver):
                 "deduplicated": boolean[random.randint(0, 1)],
                 "compressed": boolean[random.randint(0, 1)],
             }
+
             filesystem_list.append(f)
         return filesystem_list
 
@@ -386,14 +385,14 @@ class FakeStorageDriver(driver.StorageDriver):
             security_len = len(constants.NASSecurityMode.ALL) - 1
 
             t = {
-                "name": "qtree_" + str(idx),
+                "name": f"qtree_{str(idx)}",
                 "storage_id": self.storage_id,
-                "native_qtree_id": "qtree_" + str(idx),
-                "native_filesystem_id": "filesystem_"
-                                        + str(random.randint(0, 99)),
+                "native_qtree_id": f"qtree_{str(idx)}",
+                "native_filesystem_id": "filesystem_" + str(random.randint(0, 99)),
                 "security_mode": security[random.randint(0, security_len)],
-                "path": "/path/qtree_" + str(random.randint(0, 99)),
+                "path": f"/path/qtree_{random.randint(0, 99)}",
             }
+
             qtree_list.append(t)
 
         return qtree_list
@@ -407,16 +406,15 @@ class FakeStorageDriver(driver.StorageDriver):
             pro = list(constants.ShareProtocol.ALL)
             pro_len = len(constants.ShareProtocol.ALL) - 1
             c = {
-                "name": "share_" + str(idx),
+                "name": f"share_{str(idx)}",
                 "storage_id": self.storage_id,
-                "native_share_id": "share_" + str(idx),
-                "native_filesystem_id": "filesystem_"
-                                        + str(random.randint(0, 99)),
-                "native_qtree_id": "qtree_"
-                                   + str(random.randint(0, 99)),
+                "native_share_id": f"share_{str(idx)}",
+                "native_filesystem_id": "filesystem_" + str(random.randint(0, 99)),
+                "native_qtree_id": "qtree_" + str(random.randint(0, 99)),
                 "protocol": pro[random.randint(0, pro_len)],
-                "path": "/path/share_" + str(random.randint(0, 99)),
+                "path": f"/path/share_{random.randint(0, 99)}",
             }
+
             share_list.append(c)
         return share_list
 
@@ -434,56 +432,60 @@ class FakeStorageDriver(driver.StorageDriver):
         pass
 
     def list_alerts(self, context, query_para=None):
-        alert_list = [{
-            "storage_id": self.storage_id,
-            'alert_id': str(random.randint(1111111, 9999999)),
-            'sequence_number': 100,
-            'alert_name': 'SNMP connect failed',
-            'category': 'Fault',
-            'severity': 'Major',
-            'type': 'OperationalViolation',
-            'location': 'NetworkEntity=entity1',
-            'description': "SNMP connection to the storage failed.",
-            'recovery_advice': "Check snmp configurations.",
-            'occur_time': int(time.time())
-        }, {
-            "storage_id": self.storage_id,
-            'alert_id': str(random.randint(1111111, 9999999)),
-            'sequence_number': 101,
-            'alert_name': 'Link state down',
-            'category': 'Fault',
-            'severity': 'Critical',
-            'type': 'CommunicationsAlarm',
-            'location': 'NetworkEntity=entity2',
-            'description': "Backend link has gone down",
-            'recovery_advice': "Recheck the network configuration setting.",
-            'occur_time': int(time.time())
-        }, {
-            "storage_id": self.storage_id,
-            'alert_id': str(random.randint(1111111, 9999999)),
-            'sequence_number': 102,
-            'alert_name': 'Power failure',
-            'category': 'Fault',
-            'severity': 'Fatal',
-            'type': 'OperationalViolation',
-            'location': 'NetworkEntity=entity3',
-            'description': "Power failure occurred. ",
-            'recovery_advice': "Investigate power connection.",
-            'occur_time': int(time.time())
-        }, {
-            "storage_id": self.storage_id,
-            'alert_id': str(random.randint(1111111, 9999999)),
-            'sequence_number': 103,
-            'alert_name': 'Communication failure',
-            'category': 'Fault',
-            'severity': 'Critical',
-            'type': 'CommunicationsAlarm',
-            'location': 'NetworkEntity=network1',
-            'description': "Communication link gone down",
-            'recovery_advice': "Consult network administrator",
-            'occur_time': int(time.time())
-        }]
-        return alert_list
+        return [
+            {
+                "storage_id": self.storage_id,
+                'alert_id': str(random.randint(1111111, 9999999)),
+                'sequence_number': 100,
+                'alert_name': 'SNMP connect failed',
+                'category': 'Fault',
+                'severity': 'Major',
+                'type': 'OperationalViolation',
+                'location': 'NetworkEntity=entity1',
+                'description': "SNMP connection to the storage failed.",
+                'recovery_advice': "Check snmp configurations.",
+                'occur_time': int(time.time()),
+            },
+            {
+                "storage_id": self.storage_id,
+                'alert_id': str(random.randint(1111111, 9999999)),
+                'sequence_number': 101,
+                'alert_name': 'Link state down',
+                'category': 'Fault',
+                'severity': 'Critical',
+                'type': 'CommunicationsAlarm',
+                'location': 'NetworkEntity=entity2',
+                'description': "Backend link has gone down",
+                'recovery_advice': "Recheck the network configuration setting.",
+                'occur_time': int(time.time()),
+            },
+            {
+                "storage_id": self.storage_id,
+                'alert_id': str(random.randint(1111111, 9999999)),
+                'sequence_number': 102,
+                'alert_name': 'Power failure',
+                'category': 'Fault',
+                'severity': 'Fatal',
+                'type': 'OperationalViolation',
+                'location': 'NetworkEntity=entity3',
+                'description': "Power failure occurred. ",
+                'recovery_advice': "Investigate power connection.",
+                'occur_time': int(time.time()),
+            },
+            {
+                "storage_id": self.storage_id,
+                'alert_id': str(random.randint(1111111, 9999999)),
+                'sequence_number': 103,
+                'alert_name': 'Communication failure',
+                'category': 'Fault',
+                'severity': 'Critical',
+                'type': 'CommunicationsAlarm',
+                'location': 'NetworkEntity=network1',
+                'description': "Communication link gone down",
+                'recovery_advice': "Consult network administrator",
+                'occur_time': int(time.time()),
+            },
+        ]
 
     @wait_random(MIN_WAIT, MAX_WAIT)
     def _get_volume_range(self, start, end):
@@ -492,16 +494,17 @@ class FakeStorageDriver(driver.StorageDriver):
         for i in range(start, end):
             total, used, free = self._get_random_capacity()
             v = {
-                "name": "volume_" + str(i),
+                "name": f"volume_{str(i)}",
                 "storage_id": self.storage_id,
                 "description": "Fake Volume",
                 "status": "normal",
-                "native_volume_id": "volume_" + str(i),
-                "wwn": "fake_wwn_" + str(i),
+                "native_volume_id": f"volume_{str(i)}",
+                "wwn": f"fake_wwn_{str(i)}",
                 "total_capacity": total,
                 "used_capacity": used,
                 "free_capacity": free,
             }
+
             volume_list.append(v)
         return volume_list
 
@@ -531,10 +534,13 @@ class FakeStorageDriver(driver.StorageDriver):
         resource_count = RESOURCE_COUNT_DICT[resource_type]
 
         for i in range(resource_count):
-            labels = {'storage_id': storage_id,
-                      'resource_type': resource_type,
-                      'resource_id': resource_type + '_' + str(i),
-                      'type': 'RAW'}
+            labels = {
+                'storage_id': storage_id,
+                'resource_type': resource_type,
+                'resource_id': f'{resource_type}_{str(i)}',
+                'type': 'RAW',
+            }
+
             fake_metrics = self._get_random_performance(metric_list,
                                                         start_time, end_time)
             for key in metric_list.keys():
@@ -862,16 +868,16 @@ class FakeStorageDriver(driver.StorageDriver):
         storage_host_initiators_list = []
         for idx in range(rd_storage_host_initiators_count):
             f = {
-                "name": "storage_host_initiator_" + str(idx),
-                "description": "storage_host_initiator_" + str(idx),
-                "alias": "storage_host_initiator_" + str(idx),
+                "name": f"storage_host_initiator_{str(idx)}",
+                "description": f"storage_host_initiator_{str(idx)}",
+                "alias": f"storage_host_initiator_{str(idx)}",
                 "storage_id": self.storage_id,
-                "native_storage_host_initiator_id":
-                    "storage_host_initiator_" + str(idx),
-                "wwn": "wwn_" + str(idx),
+                "native_storage_host_initiator_id": f"storage_host_initiator_{str(idx)}",
+                "wwn": f"wwn_{str(idx)}",
                 "status": "Normal",
-                "native_storage_host_id": "storage_host_" + str(idx),
+                "native_storage_host_id": f"storage_host_{str(idx)}",
             }
+
             storage_host_initiators_list.append(f)
         return storage_host_initiators_list
 
@@ -882,14 +888,15 @@ class FakeStorageDriver(driver.StorageDriver):
         storage_host_list = []
         for idx in range(rd_storage_hosts_count):
             f = {
-                "name": "storage_host_" + str(idx),
-                "description": "storage_host_" + str(idx),
+                "name": f"storage_host_{str(idx)}",
+                "description": f"storage_host_{str(idx)}",
                 "storage_id": self.storage_id,
-                "native_storage_host_id": "storage_host_" + str(idx),
+                "native_storage_host_id": f"storage_host_{str(idx)}",
                 "os_type": "linux",
                 "status": "Normal",
-                "ip_address": "1.2.3." + str(idx)
+                "ip_address": f"1.2.3.{str(idx)}",
             }
+
             storage_host_list.append(f)
         return storage_host_list
 
@@ -904,28 +911,23 @@ class FakeStorageDriver(driver.StorageDriver):
             host_name_list = []
             storage_hosts_count = self.rd_storage_hosts_count - 1
             if storage_hosts_count > 0:
-                for i in range(MAX_GROUP_RESOURCES_SIZE):
-                    host_name = "storage_host_" + str(
-                        random.randint(0, storage_hosts_count))
+                for _ in range(MAX_GROUP_RESOURCES_SIZE):
+                    host_name = f"storage_host_{random.randint(0, storage_hosts_count)}"
                     if host_name not in host_name_list:
                         host_name_list.append(host_name)
 
             # Create comma separated list
             storage_hosts = None
             for host in host_name_list:
-                if storage_hosts:
-                    storage_hosts = storage_hosts + "," + host
-                else:
-                    storage_hosts = host
-
+                storage_hosts = f"{storage_hosts},{host}" if storage_hosts else host
             f = {
-                "name": "storage_host_group_" + str(idx),
-                "description": "storage_host_group_" + str(idx),
+                "name": f"storage_host_group_{str(idx)}",
+                "description": f"storage_host_group_{str(idx)}",
                 "storage_id": self.storage_id,
-                "native_storage_host_group_id": "storage_host_group_"
-                                                + str(idx),
-                "storage_hosts": storage_hosts
+                "native_storage_host_group_id": "storage_host_group_" + str(idx),
+                "storage_hosts": storage_hosts,
             }
+
             storage_host_grp_list.append(f)
         return storage_host_grp_list
 
@@ -940,27 +942,23 @@ class FakeStorageDriver(driver.StorageDriver):
             port_name_list = []
             ports_count = self.rd_ports_count - 1
             if ports_count > 0:
-                for i in range(MAX_GROUP_RESOURCES_SIZE):
-                    port_name = "port_" + str(
-                        random.randint(0, ports_count))
+                for _ in range(MAX_GROUP_RESOURCES_SIZE):
+                    port_name = f"port_{random.randint(0, ports_count)}"
                     if port_name not in port_name_list:
                         port_name_list.append(port_name)
 
             # Create comma separated list
             ports = None
             for port in port_name_list:
-                if ports:
-                    ports = ports + "," + port
-                else:
-                    ports = port
-
+                ports = f"{ports},{port}" if ports else port
             f = {
-                "name": "port_group_" + str(idx),
-                "description": "port_group_" + str(idx),
+                "name": f"port_group_{str(idx)}",
+                "description": f"port_group_{str(idx)}",
                 "storage_id": self.storage_id,
-                "native_port_group_id": "port_group_" + str(idx),
-                "ports": ports
+                "native_port_group_id": f"port_group_{str(idx)}",
+                "ports": ports,
             }
+
 
             port_grp_list.append(f)
         return port_grp_list
@@ -976,27 +974,23 @@ class FakeStorageDriver(driver.StorageDriver):
             volume_name_list = []
             volumes_count = self.rd_volumes_count - 1
             if volumes_count > 0:
-                for i in range(MAX_GROUP_RESOURCES_SIZE):
-                    volume_name = "volume_" + str(
-                        random.randint(0, volumes_count))
+                for _ in range(MAX_GROUP_RESOURCES_SIZE):
+                    volume_name = f"volume_{random.randint(0, volumes_count)}"
                     if volume_name not in volume_name_list:
                         volume_name_list.append(volume_name)
 
             # Create comma separated list
             volumes = None
             for volume in volume_name_list:
-                if volumes:
-                    volumes = volumes + "," + volume
-                else:
-                    volumes = volume
-
+                volumes = f"{volumes},{volume}" if volumes else volume
             f = {
-                "name": "volume_group_" + str(idx),
-                "description": "volume_group_" + str(idx),
+                "name": f"volume_group_{str(idx)}",
+                "description": f"volume_group_{str(idx)}",
                 "storage_id": self.storage_id,
-                "native_volume_group_id": "volume_group_" + str(idx),
-                "volumes": volumes
+                "native_volume_group_id": f"volume_group_{str(idx)}",
+                "volumes": volumes,
             }
+
             volume_grp_list.append(f)
         return volume_grp_list
 
@@ -1008,13 +1002,14 @@ class FakeStorageDriver(driver.StorageDriver):
         masking_view_list = []
         for idx in range(rd_masking_views_count):
             f = {
-                "name": "masking_view_" + str(idx),
-                "description": "masking_view_" + str(idx),
+                "name": f"masking_view_{str(idx)}",
+                "description": f"masking_view_{str(idx)}",
                 "storage_id": self.storage_id,
-                "native_masking_view_id": "masking_view_" + str(idx),
-                "native_storage_host_id": "storage_host_" + str(idx),
-                "native_volume_id": "volume_" + str(idx),
-                "native_port_id": "port_" + str(idx)
+                "native_masking_view_id": f"masking_view_{str(idx)}",
+                "native_storage_host_id": f"storage_host_{str(idx)}",
+                "native_volume_id": f"volume_{str(idx)}",
+                "native_port_id": f"port_{str(idx)}",
             }
+
             masking_view_list.append(f)
         return masking_view_list

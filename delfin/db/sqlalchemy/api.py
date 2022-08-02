@@ -103,7 +103,7 @@ def _process_model_like_filter(model, query, filters):
 
     for key in sorted(filters):
         column_attr = getattr(model, key)
-        if 'property' == type(column_attr).__name__:
+        if type(column_attr).__name__ == 'property':
             continue
         value = filters[key]
         if not (isinstance(value, (six.string_types, int))):
@@ -192,14 +192,14 @@ def access_info_get(context, storage_id):
 
 
 def _access_info_get(context, storage_id, session=None):
-    result = (_access_info_get_query(context, session=session)
-              .filter_by(storage_id=storage_id)
-              .first())
-
-    if not result:
+    if result := (
+        _access_info_get_query(context, session=session)
+        .filter_by(storage_id=storage_id)
+        .first()
+    ):
+        return result
+    else:
         raise exception.AccessInfoNotFound(storage_id)
-
-    return result
 
 
 def _access_info_get_query(context, session=None):
@@ -215,9 +215,7 @@ def access_info_get_all(context, marker=None, limit=None, sort_keys=None,
                                          marker, limit, sort_keys, sort_dirs,
                                          filters, offset,
                                          )
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.AccessInfo)
@@ -263,19 +261,19 @@ def storage_get(context, storage_id):
 
 
 def _storage_get(context, storage_id, session=None):
-    result = (_storage_get_query(context, session=session)
-              .filter_by(id=storage_id)
-              .first())
-
-    if not result:
+    if result := (
+        _storage_get_query(context, session=session)
+        .filter_by(id=storage_id)
+        .first()
+    ):
+        return result
+    else:
         raise exception.StorageNotFound(storage_id)
-
-    return result
 
 
 def _storage_get_query(context, session=None):
     read_deleted = context.read_deleted
-    kwargs = dict()
+    kwargs = {}
 
     if read_deleted in ('no', 'n', False):
         kwargs['deleted'] = False
@@ -295,9 +293,7 @@ def storage_get_all(context, marker=None, limit=None, sort_keys=None,
                                          filters, offset,
                                          )
         # No storages   match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.Storage)
@@ -321,14 +317,14 @@ def _volume_get_query(context, session=None):
 
 
 def _volume_get(context, volume_id, session=None):
-    result = (_volume_get_query(context, session=session)
-              .filter_by(id=volume_id)
-              .first())
-
-    if not result:
+    if result := (
+        _volume_get_query(context, session=session)
+        .filter_by(id=volume_id)
+        .first()
+    ):
+        return result
+    else:
         raise exception.VolumeNotFound(volume_id)
-
-    return result
 
 
 def volume_create(context, values):
@@ -420,9 +416,7 @@ def volume_get_all(context, marker=None, limit=None, sort_keys=None,
                                          marker, limit, sort_keys, sort_dirs,
                                          filters, offset)
         # No volume would match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.Volume)
@@ -446,14 +440,14 @@ def _storage_pool_get_query(context, session=None):
 
 
 def _storage_pool_get(context, storage_pool_id, session=None):
-    result = (_storage_pool_get_query(context, session=session)
-              .filter_by(id=storage_pool_id)
-              .first())
-
-    if not result:
+    if result := (
+        _storage_pool_get_query(context, session=session)
+        .filter_by(id=storage_pool_id)
+        .first()
+    ):
+        return result
+    else:
         raise exception.StoragePoolNotFound(storage_pool_id)
-
-    return result
 
 
 def storage_pool_create(context, values):
@@ -534,15 +528,14 @@ def storage_pools_update(context, storage_pools):
             LOG.debug('updating storage_pool {0}:'.format(
                 storage_pool.get('id')))
             query = _storage_pool_get_query(context, session)
-            result = query.filter_by(id=storage_pool.get('id')
-                                     ).update(storage_pool)
-
-            if not result:
-                LOG.error(exception.StoragePoolNotFound(storage_pool.get(
-                    'id')))
-            else:
+            if result := query.filter_by(id=storage_pool.get('id')).update(
+                storage_pool
+            ):
                 storage_pool_refs.append(result)
 
+            else:
+                LOG.error(exception.StoragePoolNotFound(storage_pool.get(
+                    'id')))
     return storage_pool_refs
 
 
@@ -562,9 +555,7 @@ def storage_pool_get_all(context, marker=None, limit=None, sort_keys=None,
                                          filters, offset,
                                          )
         # No storage_pool would match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 def storage_pool_delete_by_storage(context, storage_id):
@@ -615,15 +606,14 @@ def controllers_update(context, controllers):
             LOG.debug('updating controller {0}:'.format(
                 controller.get('id')))
             query = _controller_get_query(context, session)
-            result = query.filter_by(id=controller.get('id')
-                                     ).update(controller)
-
-            if not result:
-                LOG.error(exception.ControllerNotFound(controller.get(
-                    'id')))
-            else:
+            if result := query.filter_by(id=controller.get('id')).update(
+                controller
+            ):
                 controller_refs.append(result)
 
+            else:
+                LOG.error(exception.ControllerNotFound(controller.get(
+                    'id')))
     return controller_refs
 
 
@@ -647,14 +637,14 @@ def _controller_get_query(context, session=None):
 
 
 def _controller_get(context, controller_id, session=None):
-    result = (_controller_get_query(context, session=session)
-              .filter_by(id=controller_id)
-              .first())
-
-    if not result:
+    if result := (
+        _controller_get_query(context, session=session)
+        .filter_by(id=controller_id)
+        .first()
+    ):
+        return result
+    else:
         raise exception.ControllerNotFound(controller_id)
-
-    return result
 
 
 def controller_create(context, values):
@@ -709,9 +699,7 @@ def controller_get_all(context, marker=None, limit=None, sort_keys=None,
                                          filters, offset,
                                          )
         # No Controller would match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.Controller)
@@ -757,15 +745,12 @@ def ports_update(context, ports):
             LOG.debug('updating port {0}:'.format(
                 port.get('id')))
             query = _port_get_query(context, session)
-            result = query.filter_by(id=port.get('id')
-                                     ).update(port)
-
-            if not result:
-                LOG.error(exception.PortNotFound(port.get(
-                    'id')))
-            else:
+            if result := query.filter_by(id=port.get('id')).update(port):
                 port_refs.append(result)
 
+            else:
+                LOG.error(exception.PortNotFound(port.get(
+                    'id')))
     return port_refs
 
 
@@ -788,14 +773,12 @@ def _port_get_query(context, session=None):
 
 
 def _port_get(context, port_id, session=None):
-    result = (_port_get_query(context, session=session)
-              .filter_by(id=port_id)
-              .first())
-
-    if not result:
+    if result := (
+        _port_get_query(context, session=session).filter_by(id=port_id).first()
+    ):
+        return result
+    else:
         raise exception.PortNotFound(port_id)
-
-    return result
 
 
 def port_create(context, values):
@@ -851,9 +834,7 @@ def port_get_all(context, marker=None, limit=None, sort_keys=None,
                                          filters, offset,
                                          )
         # No Port would match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.Port)
@@ -899,15 +880,12 @@ def disks_update(context, disks):
             LOG.debug('updating disk {0}:'.format(
                 disk.get('id')))
             query = _disk_get_query(context, session)
-            result = query.filter_by(id=disk.get('id')
-                                     ).update(disk)
-
-            if not result:
-                LOG.error(exception.DiskNotFound(disk.get(
-                    'id')))
-            else:
+            if result := query.filter_by(id=disk.get('id')).update(disk):
                 disk_refs.append(result)
 
+            else:
+                LOG.error(exception.DiskNotFound(disk.get(
+                    'id')))
     return disk_refs
 
 
@@ -931,14 +909,12 @@ def _disk_get_query(context, session=None):
 
 
 def _disk_get(context, disk_id, session=None):
-    result = (_disk_get_query(context, session=session)
-              .filter_by(id=disk_id)
-              .first())
-
-    if not result:
+    if result := (
+        _disk_get_query(context, session=session).filter_by(id=disk_id).first()
+    ):
+        return result
+    else:
         raise exception.DiskNotFound(disk_id)
-
-    return result
 
 
 def disk_create(context, values):
@@ -994,9 +970,7 @@ def disk_get_all(context, marker=None, limit=None, sort_keys=None,
                                          filters, offset,
                                          )
         # No Disk would match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.Disk)
@@ -1042,15 +1016,14 @@ def filesystems_update(context, filesystems):
             LOG.debug('updating filesystem {0}:'.format(
                 filesystem.get('id')))
             query = _filesystem_get_query(context, session)
-            result = query.filter_by(id=filesystem.get('id')
-                                     ).update(filesystem)
-
-            if not result:
-                LOG.error(exception.FilesystemNotFound(filesystem.get(
-                    'id')))
-            else:
+            if result := query.filter_by(id=filesystem.get('id')).update(
+                filesystem
+            ):
                 filesystem_refs.append(result)
 
+            else:
+                LOG.error(exception.FilesystemNotFound(filesystem.get(
+                    'id')))
     return filesystem_refs
 
 
@@ -1073,14 +1046,14 @@ def _filesystem_get_query(context, session=None):
 
 
 def _filesystem_get(context, filesystem_id, session=None):
-    result = (_filesystem_get_query(context, session=session)
-              .filter_by(id=filesystem_id)
-              .first())
-
-    if not result:
+    if result := (
+        _filesystem_get_query(context, session=session)
+        .filter_by(id=filesystem_id)
+        .first()
+    ):
+        return result
+    else:
         raise exception.FilesystemNotFound(filesystem_id)
-
-    return result
 
 
 def filesystem_create(context, values):
@@ -1136,9 +1109,7 @@ def filesystem_get_all(context, marker=None, limit=None, sort_keys=None,
                                          filters, offset,
                                          )
         # No Filesystem would match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.Filesystem)
@@ -1184,15 +1155,12 @@ def quotas_update(context, quotas):
             LOG.debug('updating quota {0}:'.format(
                 quota.get('id')))
             query = _quota_get_query(context, session)
-            result = query.filter_by(id=quota.get('id')
-                                     ).update(quota)
-
-            if not result:
-                LOG.error(exception.QuotaNotFound(quota.get(
-                    'id')))
-            else:
+            if result := query.filter_by(id=quota.get('id')).update(quota):
                 quota_refs.append(result)
 
+            else:
+                LOG.error(exception.QuotaNotFound(quota.get(
+                    'id')))
     return quota_refs
 
 
@@ -1215,14 +1183,14 @@ def _quota_get_query(context, session=None):
 
 
 def _quota_get(context, quota_id, session=None):
-    result = (_quota_get_query(context, session=session)
-              .filter_by(id=quota_id)
-              .first())
-
-    if not result:
+    if result := (
+        _quota_get_query(context, session=session)
+        .filter_by(id=quota_id)
+        .first()
+    ):
+        return result
+    else:
         raise exception.QuotaNotFound(quota_id)
-
-    return result
 
 
 def quota_create(context, values):
@@ -1278,9 +1246,7 @@ def quota_get_all(context, marker=None, limit=None, sort_keys=None,
                                          filters, offset,
                                          )
         # No Quota would match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.Quota)
@@ -1326,15 +1292,12 @@ def qtrees_update(context, qtrees):
             LOG.debug('updating qtree {0}:'.format(
                 qtree.get('id')))
             query = _qtree_get_query(context, session)
-            result = query.filter_by(id=qtree.get('id')
-                                     ).update(qtree)
-
-            if not result:
-                LOG.error(exception.QtreeNotFound(qtree.get(
-                    'id')))
-            else:
+            if result := query.filter_by(id=qtree.get('id')).update(qtree):
                 qtree_refs.append(result)
 
+            else:
+                LOG.error(exception.QtreeNotFound(qtree.get(
+                    'id')))
     return qtree_refs
 
 
@@ -1357,14 +1320,14 @@ def _qtree_get_query(context, session=None):
 
 
 def _qtree_get(context, qtree_id, session=None):
-    result = (_qtree_get_query(context, session=session)
-              .filter_by(id=qtree_id)
-              .first())
-
-    if not result:
+    if result := (
+        _qtree_get_query(context, session=session)
+        .filter_by(id=qtree_id)
+        .first()
+    ):
+        return result
+    else:
         raise exception.QtreeNotFound(qtree_id)
-
-    return result
 
 
 def qtree_create(context, values):
@@ -1420,9 +1383,7 @@ def qtree_get_all(context, marker=None, limit=None, sort_keys=None,
                                          filters, offset,
                                          )
         # No Qtree would match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.Qtree)
@@ -1468,15 +1429,12 @@ def shares_update(context, shares):
             LOG.debug('updating share {0}:'.format(
                 share.get('id')))
             query = _share_get_query(context, session)
-            result = query.filter_by(id=share.get('id')
-                                     ).update(share)
-
-            if not result:
-                LOG.error(exception.ShareNotFound(share.get(
-                    'id')))
-            else:
+            if result := query.filter_by(id=share.get('id')).update(share):
                 share_refs.append(result)
 
+            else:
+                LOG.error(exception.ShareNotFound(share.get(
+                    'id')))
     return share_refs
 
 
@@ -1499,14 +1457,14 @@ def _share_get_query(context, session=None):
 
 
 def _share_get(context, share_id, session=None):
-    result = (_share_get_query(context, session=session)
-              .filter_by(id=share_id)
-              .first())
-
-    if not result:
+    if result := (
+        _share_get_query(context, session=session)
+        .filter_by(id=share_id)
+        .first()
+    ):
+        return result
+    else:
         raise exception.ShareNotFound(share_id)
-
-    return result
 
 
 def share_create(context, values):
@@ -1562,9 +1520,7 @@ def share_get_all(context, marker=None, limit=None, sort_keys=None,
                                          filters, offset,
                                          )
         # No Share would match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.Share)
@@ -1602,14 +1558,14 @@ def alert_source_get(context, storage_id):
 
 
 def _alert_source_get(context, storage_id, session=None):
-    result = (_alert_source_get_query(context, session=session)
-              .filter_by(storage_id=storage_id)
-              .first())
-
-    if not result:
+    if result := (
+        _alert_source_get_query(context, session=session)
+        .filter_by(storage_id=storage_id)
+        .first()
+    ):
+        return result
+    else:
         raise exception.AlertSourceNotFound(storage_id)
-
-    return result
 
 
 def _alert_source_get_query(context, session=None):
@@ -1653,14 +1609,11 @@ def alert_source_delete(context, storage_id):
     session = get_session()
     with session.begin():
         query = _alert_source_get_query(context, session)
-        result = query.filter_by(storage_id=storage_id).delete()
-        if not result:
-            LOG.error("Cannot delete non-exist alert source[storage_id=%s]." %
-                      storage_id)
-            raise exception.AlertSourceNotFound(storage_id)
+        if result := query.filter_by(storage_id=storage_id).delete():
+            LOG.info(f"Delete alert source[storage_id={storage_id}] successfully.")
         else:
-            LOG.info("Delete alert source[storage_id=%s] successfully." %
-                     storage_id)
+            LOG.error(f"Cannot delete non-exist alert source[storage_id={storage_id}].")
+            raise exception.AlertSourceNotFound(storage_id)
 
 
 def alert_source_get_all(context, marker=None, limit=None, sort_keys=None,
@@ -1670,9 +1623,7 @@ def alert_source_get_all(context, marker=None, limit=None, sort_keys=None,
         query = _generate_paginate_query(context, session, models.AlertSource,
                                          marker, limit, sort_keys, sort_dirs,
                                          filters, offset)
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 def task_create(context, values):
@@ -1702,14 +1653,12 @@ def task_update(context, tasks_id, values):
 
 
 def _task_get(context, task_id, session=None):
-    result = (_task_get_query(context, session=session)
-              .filter_by(id=task_id)
-              .first())
-
-    if not result:
+    if result := (
+        _task_get_query(context, session=session).filter_by(id=task_id).first()
+    ):
+        return result
+    else:
         raise exception.TaskNotFound(task_id)
-
-    return result
 
 
 def _task_get_query(context, session=None):
@@ -1744,9 +1693,7 @@ def task_get_all(context, marker=None, limit=None, sort_keys=None,
                                          filters, offset,
                                          )
         # No task entry would match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.Task)
@@ -1787,14 +1734,14 @@ def failed_task_update(context, failed_task_id, values):
 
 
 def _failed_tasks_get(context, failed_task_id, session=None):
-    result = (_failed_tasks_get_query(context, session=session)
-              .filter_by(id=failed_task_id)
-              .first())
-
-    if not result:
+    if result := (
+        _failed_tasks_get_query(context, session=session)
+        .filter_by(id=failed_task_id)
+        .first()
+    ):
+        return result
+    else:
         raise exception.FailedTaskNotFound(failed_task_id)
-
-    return result
 
 
 def _failed_tasks_get_query(context, session=None):
@@ -1835,9 +1782,7 @@ def failed_task_get_all(context, marker=None, limit=None, sort_keys=None,
                                          filters, offset,
                                          )
         # No failed task would match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.FailedTask)
@@ -1857,14 +1802,14 @@ def _storage_host_initiators_get_query(context, session=None):
 
 def _storage_host_initiators_get(context, storage_host_initiator_id,
                                  session=None):
-    result = (_storage_host_initiators_get_query(context, session=session)
-              .filter_by(id=storage_host_initiator_id)
-              .first())
-
-    if not result:
+    if result := (
+        _storage_host_initiators_get_query(context, session=session)
+        .filter_by(id=storage_host_initiator_id)
+        .first()
+    ):
+        return result
+    else:
         raise exception.StorageHostInitiatorNotFound(storage_host_initiator_id)
-
-    return result
 
 
 def storage_host_initiators_create(context, storage_host_initiators):
@@ -1941,9 +1886,7 @@ def storage_host_initiators_get_all(context, marker=None, limit=None,
                                          limit, sort_keys, sort_dirs,
                                          filters, offset)
         # No storage host initiator would match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.StorageHostInitiator)
@@ -1968,14 +1911,14 @@ def _storage_hosts_get_query(context, session=None):
 
 
 def _storage_hosts_get(context, storage_host_id, session=None):
-    result = (_storage_hosts_get_query(context, session=session)
-              .filter_by(id=storage_host_id)
-              .first())
-
-    if not result:
+    if result := (
+        _storage_hosts_get_query(context, session=session)
+        .filter_by(id=storage_host_id)
+        .first()
+    ):
+        return result
+    else:
         raise exception.StorageHostNotFound(storage_host_id)
-
-    return result
 
 
 def storage_hosts_create(context, storage_hosts):
@@ -2044,9 +1987,7 @@ def storage_hosts_get_all(context, marker=None, limit=None, sort_keys=None,
                                          models.StorageHost, marker, limit,
                                          sort_keys, sort_dirs, filters, offset)
         # No storage host would match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.StorageHost)
@@ -2071,14 +2012,14 @@ def _storage_host_groups_get_query(context, session=None):
 
 
 def _storage_host_groups_get(context, storage_host_grp_id, session=None):
-    result = (_storage_host_groups_get_query(context, session=session)
-              .filter_by(id=storage_host_grp_id)
-              .first())
-
-    if not result:
+    if result := (
+        _storage_host_groups_get_query(context, session=session)
+        .filter_by(id=storage_host_grp_id)
+        .first()
+    ):
+        return result
+    else:
         raise exception.StorageHostGroupNotFound(storage_host_grp_id)
-
-    return result
 
 
 def storage_host_groups_create(context, storage_host_groups):
@@ -2150,9 +2091,7 @@ def storage_host_groups_get_all(context, marker=None, limit=None,
                                          limit, sort_keys, sort_dirs,
                                          filters, offset)
         # No storage host group would match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.StorageHostGroup)
@@ -2177,14 +2116,14 @@ def _port_groups_get_query(context, session=None):
 
 
 def _port_groups_get(context, port_grp_id, session=None):
-    result = (_port_groups_get_query(context, session=session)
-              .filter_by(id=port_grp_id)
-              .first())
-
-    if not result:
+    if result := (
+        _port_groups_get_query(context, session=session)
+        .filter_by(id=port_grp_id)
+        .first()
+    ):
+        return result
+    else:
         raise exception.PortGroupNotFound(port_grp_id)
-
-    return result
 
 
 def port_groups_create(context, port_groups):
@@ -2256,9 +2195,7 @@ def port_groups_get_all(context, marker=None, limit=None,
                                          limit, sort_keys, sort_dirs,
                                          filters, offset)
         # No port group would match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.PortGroup)
@@ -2282,14 +2219,14 @@ def _volume_groups_get_query(context, session=None):
 
 
 def _volume_groups_get(context, volume_grp_id, session=None):
-    result = (_volume_groups_get_query(context, session=session)
-              .filter_by(id=volume_grp_id)
-              .first())
-
-    if not result:
+    if result := (
+        _volume_groups_get_query(context, session=session)
+        .filter_by(id=volume_grp_id)
+        .first()
+    ):
+        return result
+    else:
         raise exception.VolumeGroupNotFound(volume_grp_id)
-
-    return result
 
 
 def volume_groups_create(context, volume_groups):
@@ -2361,9 +2298,7 @@ def volume_groups_get_all(context, marker=None, limit=None,
                                          limit, sort_keys, sort_dirs,
                                          filters, offset)
         # No volume group would match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.VolumeGroup)
@@ -2388,14 +2323,14 @@ def _masking_views_get_query(context, session=None):
 
 
 def _masking_views_get(context, masking_view_id, session=None):
-    result = (_masking_views_get_query(context, session=session)
-              .filter_by(id=masking_view_id)
-              .first())
-
-    if not result:
+    if result := (
+        _masking_views_get_query(context, session=session)
+        .filter_by(id=masking_view_id)
+        .first()
+    ):
+        return result
+    else:
         raise exception.MaskingViewNotFound(masking_view_id)
-
-    return result
 
 
 def masking_views_create(context, masking_views):
@@ -2467,9 +2402,7 @@ def masking_views_get_all(context, marker=None, limit=None,
                                          limit, sort_keys, sort_dirs,
                                          filters, offset)
         # No masking view would match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.MaskingView)
@@ -2496,15 +2429,15 @@ def _storage_host_grp_host_rels_get_query(context, session=None):
 
 def _storage_host_grp_host_rels_get(context, host_grp_host_relation_id,
                                     session=None):
-    result = (
+    if result := (
         _storage_host_grp_host_rels_get_query(context, session=session)
-        .filter_by(id=host_grp_host_relation_id).first())
-
-    if not result:
+        .filter_by(id=host_grp_host_relation_id)
+        .first()
+    ):
+        return result
+    else:
         raise exception.StorageHostGrpHostRelNotFound(
             host_grp_host_relation_id)
-
-    return result
 
 
 def storage_host_grp_host_rels_create(context,
@@ -2588,9 +2521,7 @@ def storage_host_grp_host_rels_get_all(context, marker=None, limit=None,
                                          marker, limit, sort_keys, sort_dirs,
                                          filters, offset)
         # No storage host grp host relation would match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.StorageHostGrpHostRel)
@@ -2618,13 +2549,14 @@ def _port_grp_port_rels_get_query(context, session=None):
 
 def _port_grp_port_rels_get(context, port_grp_port_relation_id,
                             session=None):
-    result = (_port_grp_port_rels_get_query(context, session=session)
-              .filter_by(id=port_grp_port_relation_id).first())
-
-    if not result:
+    if result := (
+        _port_grp_port_rels_get_query(context, session=session)
+        .filter_by(id=port_grp_port_relation_id)
+        .first()
+    ):
+        return result
+    else:
         raise exception.PortGrpPortRelNotFound(port_grp_port_relation_id)
-
-    return result
 
 
 def port_grp_port_rels_create(context, port_grp_port_rels):
@@ -2706,9 +2638,7 @@ def port_grp_port_rels_get_all(context, marker=None, limit=None,
                                          marker, limit, sort_keys, sort_dirs,
                                          filters, offset)
         # No port grp port relation would match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.PortGrpPortRel)
@@ -2736,14 +2666,15 @@ def _vol_grp_vol_rels_get_query(context, session=None):
 
 def _vol_grp_vol_rels_get(context, volume_grp_volume_relation_id,
                           session=None):
-    result = (_vol_grp_vol_rels_get_query(context, session=session)
-              .filter_by(id=volume_grp_volume_relation_id).first())
-
-    if not result:
+    if result := (
+        _vol_grp_vol_rels_get_query(context, session=session)
+        .filter_by(id=volume_grp_volume_relation_id)
+        .first()
+    ):
+        return result
+    else:
         raise exception.VolGrpVolRelNotFound(
             volume_grp_volume_relation_id)
-
-    return result
 
 
 def vol_grp_vol_rels_create(context, vol_grp_vol_rels):
@@ -2826,9 +2757,7 @@ def vol_grp_vol_rels_get_all(context, marker=None, limit=None,
                                          marker, limit, sort_keys, sort_dirs,
                                          filters, offset)
         # No volume grp volume relation would match, return empty list
-        if query is None:
-            return []
-        return query.all()
+        return [] if query is None else query.all()
 
 
 @apply_like_filters(model=models.VolGrpVolRel)
@@ -2953,11 +2882,7 @@ def process_sort_params(sort_keys, sort_dirs, default_keys=None,
         default_dir_value = default_dir
 
     # Create list of keys (do not modify the input list)
-    if sort_keys:
-        result_keys = list(sort_keys)
-    else:
-        result_keys = []
-
+    result_keys = list(sort_keys) if sort_keys else []
     # If a list of directions is not provided, use the default sort direction
     # for all provided keys.
     if sort_dirs:
@@ -3026,10 +2951,7 @@ def _generate_paginate_query(context, session, paginate_type, marker,
         if query is None:
             return None
 
-    marker_object = None
-    if marker is not None:
-        marker_object = get(context, marker, session)
-
+    marker_object = get(context, marker, session) if marker is not None else None
     return sqlalchemyutils.paginate_query(query, paginate_type, limit,
                                           sort_keys,
                                           marker=marker_object,

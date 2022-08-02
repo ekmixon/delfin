@@ -66,7 +66,7 @@ class RestHandler(RestClient):
                     RestHandler.REST_AUTH_URL, data, 'GET')
                 if res.status_code == 200:
                     self.session.headers[RestHandler.AUTH_KEY] = \
-                        cryptor.encode(res.headers[RestHandler.AUTH_KEY])
+                            cryptor.encode(res.headers[RestHandler.AUTH_KEY])
                 else:
                     LOG.error("Login error.URL: %s,Reason: %s.",
                               RestHandler.REST_AUTH_URL, res.text)
@@ -100,66 +100,57 @@ class RestHandler(RestClient):
             if self.session:
                 self.session.close()
         except Exception as e:
-            err_msg = "Logout error: %s" % (six.text_type(e))
+            err_msg = f"Logout error: {six.text_type(e)}"
             LOG.error(err_msg)
             raise e
 
     def get_rest_info(self, url, data=None, method='GET'):
-        result_json = None
         res = self.call(url, data, method)
-        if res.status_code == 200:
-            result_json = res.json()
-        return result_json
+        return res.json() if res.status_code == 200 else None
 
     def call(self, url, data=None, method=None):
         try:
             res = self.call_with_token(url, data, method)
             if res.status_code == 401:
-                LOG.error("Failed to get token, status_code:%s,error_mesg:%s" %
-                          (res.status_code, res.text))
+                LOG.error(
+                    f"Failed to get token, status_code:{res.status_code},error_mesg:{res.text}"
+                )
+
                 self.login()
                 res = self.call_with_token(url, data, method)
             elif res.status_code == 503:
                 raise exception.InvalidResults(res.text)
             return res
         except Exception as e:
-            LOG.error("Method:%s,url:%s failed: %s" % (method, url,
-                                                       six.text_type(e)))
+            LOG.error(f"Method:{method},url:{url} failed: {six.text_type(e)}")
             raise e
 
     def get_all_pools(self):
         url = '%s?%s' % (RestHandler.REST_POOLS_URL,
                          'fields=id,name,health,type,sizeFree,'
                          'sizeTotal,sizeUsed,sizeSubscribed')
-        result_json = self.get_rest_info(url)
-        return result_json
+        return self.get_rest_info(url)
 
     def get_storage(self):
-        url = '%s?%s' % (RestHandler.REST_STORAGE_URL,
-                         'fields=name,model,serialNumber,health')
-        result_json = self.get_rest_info(url)
-        return result_json
+        url = f'{RestHandler.REST_STORAGE_URL}?fields=name,model,serialNumber,health'
+        return self.get_rest_info(url)
 
     def get_capacity(self):
         url = '%s?%s' % (RestHandler.REST_CAPACITY_URL,
                          'fields=sizeFree,sizeTotal,sizeUsed,'
                          'sizeSubscribed,totalLogicalSize')
-        result_json = self.get_rest_info(url)
-        return result_json
+        return self.get_rest_info(url)
 
     def get_soft_version(self):
-        url = '%s?%s' % (RestHandler.REST_SOFT_VERSION_URL,
-                         'fields=version')
-        result_json = self.get_rest_info(url)
-        return result_json
+        url = f'{RestHandler.REST_SOFT_VERSION_URL}?fields=version'
+        return self.get_rest_info(url)
 
     def get_all_luns(self, page_number):
         url = '%s?%s&page=%s' % (RestHandler.REST_LUNS_URL,
                                  'fields=id,name,health,type,sizeAllocated,'
                                  'sizeTotal,sizeUsed,pool,wwn,isThinEnabled',
                                  page_number)
-        result_json = self.get_rest_info(url)
-        return result_json
+        return self.get_rest_info(url)
 
     def get_all_alerts(self, page_number):
         url = '%s?%s&page=%s' % (RestHandler.REST_ALERTS_URL,
@@ -167,89 +158,73 @@ class RestHandler(RestClient):
                                  'messageId,message,description,'
                                  'descriptionId,state',
                                  page_number)
-        result_json = self.get_rest_info(url)
-        return result_json
+        return self.get_rest_info(url)
 
     def remove_alert(self, alert_id):
         data = {"state": RestHandler.STATE_SOLVED}
-        url = '%s%s/action/modify' % (RestHandler.REST_DEL_ALERTS_URL,
-                                      alert_id)
-        result_json = self.get_rest_info(url, data, method='POST')
-        return result_json
+        url = f'{RestHandler.REST_DEL_ALERTS_URL}{alert_id}/action/modify'
+        return self.get_rest_info(url, data, method='POST')
 
     def get_all_controllers(self):
         url = '%s?%s' % (RestHandler.REST_CONTROLLER_URL,
                          'fields=id,name,health,model,slotNumber,'
                          'emcPartNumber,emcSerialNumber,manufacturer,'
                          'memorySize')
-        result_json = self.get_rest_info(url)
-        return result_json
+        return self.get_rest_info(url)
 
     def get_all_disks(self):
         url = '%s?%s' % (RestHandler.REST_DISK_URL,
                          'fields=id,name,health,model,slotNumber,'
                          'manufacturer,version,emcSerialNumber,wwn'
                          'emcPartNumber,rpm,size,diskGroup')
-        result_json = self.get_rest_info(url)
-        return result_json
+        return self.get_rest_info(url)
 
     def get_all_fcports(self):
         url = '%s?%s' % (RestHandler.REST_FCPORT_URL,
                          'fields=id,name,health,slotNumber,storageProcessor,'
                          'currentSpeed,wwn')
-        result_json = self.get_rest_info(url)
-        return result_json
+        return self.get_rest_info(url)
 
     def get_all_ethports(self):
         url = '%s?%s' % (RestHandler.REST_ETHPORT_URL,
                          'fields=id,name,health,portNumber,storageProcessor,'
                          'speed,isLinkUp,macAddress,maxMtu')
-        result_json = self.get_rest_info(url)
-        return result_json
+        return self.get_rest_info(url)
 
     def get_port_interface(self):
         url = '%s?%s' % (RestHandler.REST_IP_URL,
                          'fields=id,ipPort,ipProtocolVersion,'
                          'ipAddress,netmask')
-        result_json = self.get_rest_info(url)
-        return result_json
+        return self.get_rest_info(url)
 
     def get_all_filesystems(self):
         url = '%s?%s' % (RestHandler.REST_FILESYSTEM_URL,
                          'fields=id,name,health,sizeAllocated,accessPolicy,'
                          'sizeTotal,sizeUsed,isThinEnabled,pool,flrVersion')
-        result_json = self.get_rest_info(url)
-        return result_json
+        return self.get_rest_info(url)
 
     def get_all_nfsshares(self):
-        url = '%s?%s' % (RestHandler.REST_NFSSHARE_URL,
-                         'fields=id,filesystem,name,path')
-        result_json = self.get_rest_info(url)
-        return result_json
+        url = f'{RestHandler.REST_NFSSHARE_URL}?fields=id,filesystem,name,path'
+        return self.get_rest_info(url)
 
     def get_all_cifsshares(self):
-        url = '%s?%s' % (RestHandler.REST_CIFSSHARE_URL,
-                         'fields=id,filesystem,name,path')
-        result_json = self.get_rest_info(url)
-        return result_json
+        url = f'{RestHandler.REST_CIFSSHARE_URL}?fields=id,filesystem,name,path'
+        return self.get_rest_info(url)
 
     def get_all_qtrees(self):
         url = '%s?%s' % (RestHandler.REST_QTREE_URL,
                          'fields=id,filesystem,description,path,hardLimit,'
                          'softLimit,sizeUsed,quotaConfig')
-        result_json = self.get_rest_info(url)
-        return result_json
+        return self.get_rest_info(url)
 
     def get_all_userquotas(self):
         url = '%s?%s' % (RestHandler.REST_USERQUOTA_URL,
                          'fields=id,filesystem,hardLimit,softLimit,'
                          'sizeUsed,treeQuota,uid')
-        result_json = self.get_rest_info(url)
-        return result_json
+        return self.get_rest_info(url)
 
     def get_quota_configs(self):
         url = '%s?%s' % (RestHandler.REST_QUOTACONFIG_URL,
                          'fields=id,filesystem,treeQuota,quotaPolicy,'
                          'isUserQuotaEnabled,isAccessDenyEnabled')
-        result_json = self.get_rest_info(url)
-        return result_json
+        return self.get_rest_info(url)

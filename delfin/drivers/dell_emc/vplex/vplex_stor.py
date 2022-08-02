@@ -43,8 +43,7 @@ class VplexStorageDriver(driver.StorageDriver):
     def get_storage(self, context):
         health_check = self.rest_handler.get_health_check_resp()
         all_cluster = self.rest_handler.get_cluster_resp()
-        cluster_name_list = VplexStorageDriver.get_resource_names(all_cluster)
-        if cluster_name_list:
+        if cluster_name_list := VplexStorageDriver.get_resource_names(all_cluster):
             health_map = {}
             custom_data = health_check.get("custom-data")
             VplexStorageDriver.handle_detail(custom_data,
@@ -67,8 +66,7 @@ class VplexStorageDriver(driver.StorageDriver):
                     error_msg = "Failed to get capacity from VPLEX!"
                     raise exception.StorageBackendException(error_msg)
                 free_capacity = total_capacity - used_capacity
-                if free_capacity < 0:
-                    free_capacity = 0
+                free_capacity = max(free_capacity, 0)
                 cluster = {
                     'name': cluster_name,
                     'vendor': 'DELL EMC',
@@ -138,7 +136,7 @@ class VplexStorageDriver(driver.StorageDriver):
             map_vv_children = VplexStorageDriver.get_children_map(resposne_vv)
             for name, resource_type in map_vv_children.items():
                 response_vvn = self.rest_handler. \
-                    get_virtual_volume_by_name_resp(cluster_name, name)
+                        get_virtual_volume_by_name_resp(cluster_name, name)
                 map_vvn_attribute = VplexStorageDriver.get_attribute_map(
                     response_vvn)
                 thin_enabled = map_vvn_attribute.get("thin-enabled")
@@ -210,21 +208,19 @@ class VplexStorageDriver(driver.StorageDriver):
 
     @staticmethod
     def analyse_capacity(capacity_str):
-        capacity = 0
-        if capacity_str.strip():
-            capacity = re.findall("\\d+", capacity_str)[0]
-        return capacity
+        return re.findall("\\d+", capacity_str)[0] if capacity_str.strip() else 0
 
     @staticmethod
     def analyse_status(operational_status, health_status):
         status = constants.StorageStatus.ABNORMAL
-        status_normal = ["ok"]
-        status_offline = ["unknown", "isolated", "not-running",
-                          "non-recoverable-error"]
-        if operational_status and health_status in status_normal:
-            status = constants.StorageStatus.NORMAL
-        elif operational_status and health_status in status_offline:
-            status = constants.StorageStatus.OFFLINE
+        if operational_status:
+            status_normal = ["ok"]
+            status_offline = ["unknown", "isolated", "not-running",
+                              "non-recoverable-error"]
+            if health_status in status_normal:
+                status = constants.StorageStatus.NORMAL
+            elif health_status in status_offline:
+                status = constants.StorageStatus.OFFLINE
         return status
 
     @staticmethod
@@ -355,18 +351,18 @@ class VplexStorageDriver(driver.StorageDriver):
         port_list = []
         hardware_port_map = {}
         hardware_port_resp = self.rest_handler. \
-            get_engine_director_hardware_port_resp()
+                get_engine_director_hardware_port_resp()
         export_port_resp = self.rest_handler.get_cluster_export_port_resp()
         VplexStorageDriver.analyse_hardware_port(hardware_port_resp,
                                                  hardware_port_map)
         port_context_list = VplexStorageDriver. \
-            get_context_list(export_port_resp)
+                get_context_list(export_port_resp)
         for port_context in port_context_list:
             port_attr = port_context.get('attributes')
             port_name = port_attr.get('name')
             export_status = port_attr.get('export-status')
             speed, max_speed, protocols, role, port_status, \
-                operational_status = self.get_hardware_port_info(
+                    operational_status = self.get_hardware_port_info(
                     hardware_port_map, port_name, 'attributes')
             connection_status = VplexStorageDriver.analyse_port_connect_status(
                 export_status)
@@ -403,15 +399,12 @@ class VplexStorageDriver(driver.StorageDriver):
                 ct_type = context.get("type")
                 parent = context.get("parent")
                 attributes = context.get("attributes")
-                context_map = {}
                 attr_map = {}
                 for attribute in attributes:
                     key = attribute.get("name")
                     value = attribute.get("value")
                     attr_map[key] = value
-                context_map["type"] = ct_type
-                context_map["parent"] = parent
-                context_map["attributes"] = attr_map
+                context_map = {"type": ct_type, "parent": parent, "attributes": attr_map}
                 context_list.append(context_map)
         return context_list
 
@@ -424,27 +417,24 @@ class VplexStorageDriver(driver.StorageDriver):
         for detail in detail_arr:
             if detail is not None and detail != '':
                 if "For director" in detail:
-                    match_obj = re.search(
-                        r'For director.+?directors/(.*?):', detail)
-                    if match_obj:
-                        director_name = match_obj.group(1)
+                    if match_obj := re.search(
+                        r'For director.+?directors/(.*?):', detail
+                    ):
+                        director_name = match_obj[1]
                     continue
                 if director_name:
                     if "What:" in detail:
-                        match_obj = re.search(r'What:\s+(.+?)$', detail)
-                        if match_obj:
-                            version_name = match_obj.group(1)
+                        if match_obj := re.search(r'What:\s+(.+?)$', detail):
+                            version_name = match_obj[1]
                         continue
                     if version_name:
-                        match_obj = re.search(r'Version:\s+(.+?)$', detail)
-                        if match_obj:
-                            version_value = match_obj.group(1)
+                        if match_obj := re.search(r'Version:\s+(.+?)$', detail):
+                            version_value = match_obj[1]
                             if director_version_map.get(director_name):
                                 director_version_map.get(director_name)[
                                     version_name] = version_value
                             else:
-                                version_map = {}
-                                version_map[version_name] = version_value
+                                version_map = {version_name: version_value}
                                 director_version_map[
                                     director_name] = version_map
 
@@ -457,16 +447,14 @@ class VplexStorageDriver(driver.StorageDriver):
                                        specified_name):
         version_value = ''
         if version_map:
-            director_map = version_map.get(director_name)
-            if director_map:
+            if director_map := version_map.get(director_name):
                 version_value = director_map.get(specified_name)
         return version_value
 
     def get_value_from_nest_map(self, nest_map, first_key, second_key):
         final_value = ''
         if nest_map:
-            second_map = nest_map.get(first_key)
-            if second_map:
+            if second_map := nest_map.get(first_key):
                 final_value = second_map.get(second_key)
         return final_value
 
@@ -478,10 +466,8 @@ class VplexStorageDriver(driver.StorageDriver):
         port_status = ''
         operational_status = ''
         if nest_map:
-            second_map = nest_map.get(first_key)
-            if second_map:
-                third_map = second_map.get(second_key)
-                if third_map:
+            if second_map := nest_map.get(first_key):
+                if third_map := second_map.get(second_key):
                     speed = third_map.get('current-speed')
                     max_speed = third_map.get('max-speed')
                     protocols = third_map.get('protocols')
@@ -493,11 +479,9 @@ class VplexStorageDriver(driver.StorageDriver):
 
     @staticmethod
     def analyse_hardware_port(resp, hardware_port_map):
-        port_list = VplexStorageDriver.get_context_list(resp)
-        if port_list:
+        if port_list := VplexStorageDriver.get_context_list(resp):
             for port in port_list:
-                port_attr = port.get("attributes")
-                if port_attr:
+                if port_attr := port.get("attributes"):
                     port_name = port_attr.get("target-port")
                     hardware_port_map[port_name] = port
 
@@ -506,8 +490,7 @@ class VplexStorageDriver(driver.StorageDriver):
         port_type = constants.PortType.OTHER
         if protocols:
             for protocol in protocols:
-                port_type_value = consts.PORT_TYPE_MAP.get(protocol)
-                if port_type_value:
+                if port_type_value := consts.PORT_TYPE_MAP.get(protocol):
                     port_type = port_type_value
                     break
         return port_type
@@ -531,12 +514,12 @@ class VplexStorageDriver(driver.StorageDriver):
     def analyse_speed(speed_value):
         speed = None
         if speed_value:
-            match_obj = re.search(r'([1-9]\d*\.?\d*)|(0\.\d*[1-9])',
-                                  speed_value)
-            if match_obj:
-                speed = int(match_obj.group(0))
+            if match_obj := re.search(
+                r'([1-9]\d*\.?\d*)|(0\.\d*[1-9])', speed_value
+            ):
+                speed = int(match_obj[0])
                 if 'Gbit' in speed_value:
-                    speed = speed * units.G
+                    speed *= units.G
                 elif 'Mbit' in speed_value:
                     speed = speed * units.M
                 elif 'Kbit' in speed_value:

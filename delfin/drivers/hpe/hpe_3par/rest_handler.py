@@ -58,52 +58,49 @@ class RestHandler(object):
             # the token invalidation.
             # If the token fails, it will be retrieved again,
             # and the token will be accessed again
-            if res is not None:
-                # 403  The client request has an invalid session key.
-                #      The request came from a different IP address
-                # 409  Session key is being used.
-                if (res.status_code == consts.ERROR_SESSION_INVALID_CODE
-                        or res.status_code ==
-                        consts.ERROR_SESSION_IS_BEING_USED_CODE):
-                    LOG.error(
-                        "Failed to get token=={0}=={1}".format(res.status_code,
-                                                               res.text))
-                    LOG.error("Failed to get token,relogin,Get token again")
-                    # if method is logout,return immediately
-                    if method == 'DELETE' and RestHandler.\
-                            REST_LOGOUT_URL in url:
-                        return res
-                    self.rest_client.rest_auth_token = None
-                    access_session = self.login()
-                    # if get token，Revisit url
-                    if access_session is not None:
-                        res = self.rest_client. \
-                            do_call(url, data, method,
-                                    calltimeout=consts.SOCKET_TIMEOUT)
-                    else:
-                        LOG.error('Login res is None')
-                elif res.status_code == 503:
-                    raise exception.InvalidResults(res.text)
-            else:
+            if res is None:
                 LOG.error('Rest exec failed')
 
+            elif res.status_code in [
+                consts.ERROR_SESSION_INVALID_CODE,
+                consts.ERROR_SESSION_IS_BEING_USED_CODE,
+            ]:
+                LOG.error(
+                    "Failed to get token=={0}=={1}".format(res.status_code,
+                                                           res.text))
+                LOG.error("Failed to get token,relogin,Get token again")
+                # if method is logout,return immediately
+                if method == 'DELETE' and RestHandler.\
+                            REST_LOGOUT_URL in url:
+                    return res
+                self.rest_client.rest_auth_token = None
+                access_session = self.login()
+                # if get token，Revisit url
+                if access_session is not None:
+                    res = self.rest_client. \
+                            do_call(url, data, method,
+                                calltimeout=consts.SOCKET_TIMEOUT)
+                else:
+                    LOG.error('Login res is None')
+            elif res.status_code == 503:
+                raise exception.InvalidResults(res.text)
             return res
         except exception.DelfinException as e:
-            err_msg = "Call failed: %s" % (six.text_type(e))
+            err_msg = f"Call failed: {six.text_type(e)}"
             LOG.error(err_msg)
             raise e
         except Exception as e:
-            err_msg = "Get RestHandler.call failed: %s" % (six.text_type(e))
+            err_msg = f"Get RestHandler.call failed: {six.text_type(e)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
     def get_resinfo_call(self, url, data=None, method=None):
-        rejson = None
         res = self.call(url, data, method)
-        if res is not None:
-            if res.status_code == consts.SUCCESS_STATUS_CODES:
-                rejson = res.json()
-        return rejson
+        return (
+            res.json()
+            if res is not None and res.status_code == consts.SUCCESS_STATUS_CODES
+            else None
+        )
 
     def login(self):
         """Login Hpe3par storage array."""
@@ -162,37 +159,29 @@ class RestHandler(object):
         try:
             url = RestHandler.REST_LOGOUT_URL
             if self.rest_client.rest_auth_token is not None:
-                url = '%s%s' % (url, self.rest_client.rest_auth_token)
+                url = f'{url}{self.rest_client.rest_auth_token}'
             self.rest_client.rest_auth_token = None
             if self.rest_client.san_address:
                 self.call(url, method='DELETE')
             if self.rest_client.session:
                 self.rest_client.session.close()
         except exception.DelfinException as e:
-            err_msg = "Logout error: %s" % (e.msg)
+            err_msg = f"Logout error: {e.msg}"
             LOG.error(err_msg)
             raise e
         except Exception as e:
-            err_msg = "Logout error: %s" % (six.text_type(e))
+            err_msg = f"Logout error: {six.text_type(e)}"
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
     def get_storage(self):
-        rejson = self.get_resinfo_call(RestHandler.REST_STORAGE_URL,
-                                       method='GET')
-        return rejson
+        return self.get_resinfo_call(RestHandler.REST_STORAGE_URL, method='GET')
 
     def get_capacity(self):
-        rejson = self.get_resinfo_call(RestHandler.REST_CAPACITY_URL,
-                                       method='GET')
-        return rejson
+        return self.get_resinfo_call(RestHandler.REST_CAPACITY_URL, method='GET')
 
     def get_all_pools(self):
-        rejson = self.get_resinfo_call(RestHandler.REST_POOLS_URL,
-                                       method='GET')
-        return rejson
+        return self.get_resinfo_call(RestHandler.REST_POOLS_URL, method='GET')
 
     def get_all_volumes(self):
-        rejson = self.get_resinfo_call(RestHandler.REST_VOLUMES_URL,
-                                       method='GET')
-        return rejson
+        return self.get_resinfo_call(RestHandler.REST_VOLUMES_URL, method='GET')

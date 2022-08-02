@@ -67,11 +67,10 @@ class AlertHandler(object):
     @staticmethod
     def parse_alert(context, alert):
         try:
-            alert_model = dict()
-            alert_model['alert_id'] = alert.get(AlertHandler.OID_SYMPTOMID)
-            trap_map_desc = consts.TRAP_DESC.get(
-                alert.get(AlertHandler.OID_SYMPTOMID))
-            if trap_map_desc:
+            alert_model = {'alert_id': alert.get(AlertHandler.OID_SYMPTOMID)}
+            if trap_map_desc := consts.TRAP_DESC.get(
+                alert.get(AlertHandler.OID_SYMPTOMID)
+            ):
                 alert_desc = trap_map_desc[2]
             else:
                 alert_desc = alert.get(AlertHandler.OID_SYMPTOMTEXT)

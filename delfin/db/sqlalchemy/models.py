@@ -39,11 +39,7 @@ class DelfinBase(models.ModelBase,
     metadata = None
 
     def to_dict(self):
-        model_dict = {}
-        for k, v in self.items():
-            if not issubclass(type(v), DelfinBase):
-                model_dict[k] = v
-        return model_dict
+        return {k: v for k, v in self.items() if not issubclass(type(v), DelfinBase)}
 
 
 class AccessInfo(BASE, DelfinBase):

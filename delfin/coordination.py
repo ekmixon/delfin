@@ -132,7 +132,7 @@ class LeaderElectionCoordinator(Coordinator):
             return
 
         # NOTE(gouthamr): Tooz expects member_id as a byte string.
-        member_id = (self.prefix + "-" + self.agent_id).encode('ascii')
+        member_id = f"{self.prefix}-{self.agent_id}".encode('ascii')
         LOG.info('Started Coordinator (Agent ID: %(agent)s, '
                  'prefix: %(prefix)s)', {'agent': self.agent_id,
                                          'prefix': self.prefix})
@@ -302,21 +302,21 @@ def synchronized(lock_name, blocking=True, coordinator=None):
 
 def _get_redis_backend_url():
     cipher_password = getattr(CONF.coordination, 'backend_password', None)
-    if cipher_password is not None:
-        # If password is needed, the password should be
-        # set in config file with cipher text
-        # And in this scenario, these are also needed for backend:
-        # {backend_type}://[{user}]:{password}@{ip}:{port}.
-        plaintext_password = cryptor.decode(cipher_password)
-        # User could be null
-        backend_url = '{backend_type}://{user}:{password}@{server}' \
-            .format(backend_type=CONF.coordination.backend_type,
-                    user=CONF.coordination.backend_user,
-                    password=plaintext_password,
-                    server=CONF.coordination.backend_server)
+    if cipher_password is None:
+        return '{backend_type}://{server}'.format(
+            backend_type=CONF.coordination.backend_type,
+            server=CONF.coordination.backend_server,
+        )
 
-    else:
-        backend_url = '{backend_type}://{server}' \
-            .format(backend_type=CONF.coordination.backend_type,
-                    server=CONF.coordination.backend_server)
-    return backend_url
+    # If password is needed, the password should be
+    # set in config file with cipher text
+    # And in this scenario, these are also needed for backend:
+    # {backend_type}://[{user}]:{password}@{ip}:{port}.
+    plaintext_password = cryptor.decode(cipher_password)
+        # User could be null
+    return '{backend_type}://{user}:{password}@{server}'.format(
+        backend_type=CONF.coordination.backend_type,
+        user=CONF.coordination.backend_user,
+        password=plaintext_password,
+        server=CONF.coordination.backend_server,
+    )

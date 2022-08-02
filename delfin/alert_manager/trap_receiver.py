@@ -65,8 +65,7 @@ class TrapReceiver(manager.Manager):
         storage_id = new_config.get("storage_id")
         version_int = self._get_snmp_version_int(ctxt,
                                                  new_config.get("version"))
-        if version_int == constants.SNMP_V2_INT or \
-                version_int == constants.SNMP_V1_INT:
+        if version_int in [constants.SNMP_V2_INT, constants.SNMP_V1_INT]:
             community_string = cryptor.decode(
                 new_config.get("community_string"))
             community_index = self._get_community_index(storage_id)
@@ -125,32 +124,29 @@ class TrapReceiver(manager.Manager):
         _version = version.lower()
         version_int = constants.VALID_SNMP_VERSIONS.get(_version)
         if version_int is None:
-            msg = "Invalid snmp version %s." % version
+            msg = f"Invalid snmp version {version}."
             raise exception.InvalidSNMPConfig(msg)
 
         return version_int
 
     def _get_usm_auth_protocol(self, ctxt, auth_protocol):
-        if auth_protocol:
-            usm_auth_protocol = common_constants.AUTH_PROTOCOL_MAP \
-                .get(auth_protocol.lower())
-            if usm_auth_protocol:
-                return usm_auth_protocol
-            else:
-                msg = "Invalid auth_protocol %s." % auth_protocol
-                raise exception.InvalidSNMPConfig(msg)
-        else:
+        if not auth_protocol:
             return config.usmNoAuthProtocol
+        if usm_auth_protocol := common_constants.AUTH_PROTOCOL_MAP.get(
+            auth_protocol.lower()
+        ):
+            return usm_auth_protocol
+        msg = f"Invalid auth_protocol {auth_protocol}."
+        raise exception.InvalidSNMPConfig(msg)
 
     def _get_usm_priv_protocol(self, ctxt, privacy_protocol):
         if privacy_protocol:
-            usm_priv_protocol = common_constants.PRIVACY_PROTOCOL_MAP.get(
-                privacy_protocol.lower())
-            if usm_priv_protocol:
+            if usm_priv_protocol := common_constants.PRIVACY_PROTOCOL_MAP.get(
+                privacy_protocol.lower()
+            ):
                 return usm_priv_protocol
-            else:
-                msg = "Invalid privacy_protocol %s." % privacy_protocol
-                raise exception.InvalidSNMPConfig(msg)
+            msg = f"Invalid privacy_protocol {privacy_protocol}."
+            raise exception.InvalidSNMPConfig(msg)
 
         return config.usmNoPrivProtocol
 
@@ -195,8 +191,10 @@ class TrapReceiver(manager.Manager):
         """Callback function to process the incoming trap."""
         exec_context = self.snmp_engine.observer.getExecutionContext(
             'rfc3412.receiveMessage:request')
-        LOG.debug("Get notification from: %s" %
-                  "#".join([str(x) for x in exec_context['transportAddress']]))
+        LOG.debug(
+            f"""Get notification from: {"#".join([str(x) for x in exec_context['transportAddress']])}"""
+        )
+
         alert = {}
 
         try:
@@ -213,8 +211,8 @@ class TrapReceiver(manager.Manager):
             # the storage which is sending traps.
             # context_name contains the incoming community string value
             if exec_context['securityModel'] != constants.SNMP_V3_INT \
-                    and cryptor.decode(alert_source['community_string']) \
-                    != str(context_name):
+                        and cryptor.decode(alert_source['community_string']) \
+                        != str(context_name):
                 msg = (_("Community string not matching with alert source %s, "
                          "dropping it.") % source_ip)
                 raise exception.InvalidResults(msg)
@@ -230,8 +228,7 @@ class TrapReceiver(manager.Manager):
             filters = {'mgmt_ip': source_ip,
                        'storage_id': alert_source['storage_id']}
             ctxt = context.RequestContext()
-            controllers = db.controller_get_all(ctxt, filters=filters)
-            if controllers:
+            if controllers := db.controller_get_all(ctxt, filters=filters):
                 alert['controller_name'] = controllers[0].get('name')
 
             # Handover to alert processor for model translation and export
@@ -254,8 +251,8 @@ class TrapReceiver(manager.Manager):
             alert_sources = db_api.alert_source_get_all(ctxt, marker=marker,
                                                         limit=limit)
             for alert_source in alert_sources:
-                snmp_config = dict()
-                snmp_config.update(alert_source)
+                snmp_config = {}
+                snmp_config |= alert_source
                 self._add_snmp_config(ctxt, snmp_config)
                 marker = alert_source['storage_id']
             if len(alert_sources) < limit:

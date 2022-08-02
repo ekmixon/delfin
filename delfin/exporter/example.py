@@ -20,9 +20,9 @@ LOG = log.getLogger(__name__)
 
 class AlertExporterExample(base_exporter.BaseExporter):
     def dispatch(self, ctxt, data):
-        LOG.debug("AlertExporterExample, report data: %s" % data)
+        LOG.debug(f"AlertExporterExample, report data: {data}")
 
 
 class PerformanceExporterExample(base_exporter.BaseExporter):
     def dispatch(self, ctxt, data):
-        LOG.debug("PerformanceExporterExample, report data: %s" % data)
+        LOG.debug(f"PerformanceExporterExample, report data: {data}")

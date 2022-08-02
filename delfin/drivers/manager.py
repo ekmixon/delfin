@@ -37,7 +37,7 @@ class DriverManager(stevedore.ExtensionManager):
         # The driver_factory will keep the driver instance for
         # each of storage systems so that the session between driver
         # and storage system is effectively used.
-        self.driver_factory = dict()
+        self.driver_factory = {}
 
     def get_driver(self, context, invoke_on_load=True,
                    cache_on_load=True, **kwargs):
@@ -56,15 +56,15 @@ class DriverManager(stevedore.ExtensionManager):
         """
         kwargs = copy.deepcopy(kwargs)
         kwargs['verify'] = False
-        ca_path = ssl_utils.get_storage_ca_path()
-        if ca_path:
+        if ca_path := ssl_utils.get_storage_ca_path():
             ssl_utils.verify_ca_path(ca_path)
             kwargs['verify'] = ca_path
 
-        if not invoke_on_load:
-            return self._get_driver_cls(**kwargs)
-        else:
-            return self._get_driver_obj(context, cache_on_load, **kwargs)
+        return (
+            self._get_driver_obj(context, cache_on_load, **kwargs)
+            if invoke_on_load
+            else self._get_driver_cls(**kwargs)
+        )
 
     def update_driver(self, storage_id, driver):
         self.driver_factory[storage_id] = driver
@@ -107,7 +107,7 @@ class DriverManager(stevedore.ExtensionManager):
 
     def _get_driver_cls(self, **kwargs):
         """Get driver class from entry points."""
-        name = '%s %s' % (kwargs.get('vendor'), kwargs.get('model'))
+        name = f"{kwargs.get('vendor')} {kwargs.get('model')}"
         if name in self.names():
             return self[name].plugin
 

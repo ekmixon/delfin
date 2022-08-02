@@ -59,24 +59,19 @@ def _soft_validate_additional_properties(
 
     properties = schema.get("properties", {})
     patterns = "|".join(schema.get("patternProperties", {}))
-    extra_properties = set()
-    for prop in param_value:
-        if prop not in properties:
-            if patterns:
-                if not re.search(patterns, prop):
-                    extra_properties.add(prop)
-            else:
-                extra_properties.add(prop)
+    extra_properties = {
+        prop
+        for prop in param_value
+        if prop not in properties
+        and (patterns and not re.search(patterns, prop) or not patterns)
+    }
 
     if not extra_properties:
         return
 
     if patterns:
         error = "Additional properties are not allowed (%s %s unexpected)"
-        if len(extra_properties) == 1:
-            verb = "was"
-        else:
-            verb = "were"
+        verb = "was" if len(extra_properties) == 1 else "were"
         yield jsonschema_exc.ValidationError(
             error % (", ".join(repr(extra) for extra in extra_properties),
                      verb))

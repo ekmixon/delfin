@@ -166,22 +166,26 @@ class Service(service.Service):
             topic = binary
         if not manager:
             subtopic = topic.rpartition('delfin-')[2]
-            manager = CONF.get('%s_manager' % subtopic, None)
+            manager = CONF.get(f'{subtopic}_manager', None)
         if periodic_enable is None:
             periodic_enable = CONF.periodic_enable
         if periodic_interval is None:
             periodic_interval = CONF.periodic_interval
         if periodic_fuzzy_delay is None:
             periodic_fuzzy_delay = CONF.periodic_fuzzy_delay
-        service_obj = cls(host, binary, topic, manager,
-                          periodic_enable=periodic_enable,
-                          periodic_interval=periodic_interval,
-                          periodic_fuzzy_delay=periodic_fuzzy_delay,
-                          service_name=service_name,
-                          coordination=coordination,
-                          *args, **kwargs)
-
-        return service_obj
+        return cls(
+            host,
+            binary,
+            topic,
+            manager,
+            periodic_enable=periodic_enable,
+            periodic_interval=periodic_interval,
+            periodic_fuzzy_delay=periodic_fuzzy_delay,
+            service_name=service_name,
+            coordination=coordination,
+            *args,
+            **kwargs
+        )
 
     def kill(self):
         """Destroy the service object in the datastore."""
@@ -235,14 +239,18 @@ class AlertService(Service):
         kwargs['trap_receiver_address'] = CONF.trap_receiver_address
         kwargs['trap_receiver_port'] = CONF.trap_receiver_port
 
-        service_obj = super(AlertService, cls).create(
-            host=host, binary=binary, topic=topic, manager=manager,
+        return super(AlertService, cls).create(
+            host=host,
+            binary=binary,
+            topic=topic,
+            manager=manager,
             periodic_interval=periodic_interval,
             periodic_fuzzy_delay=periodic_fuzzy_delay,
             service_name=service_name,
-            coordination=coordination, *args, **kwargs)
-
-        return service_obj
+            coordination=coordination,
+            *args,
+            **kwargs
+        )
 
     def start(self):
         super(AlertService, self).start()
@@ -265,14 +273,18 @@ class TaskService(Service):
                manager=None, periodic_interval=None,
                periodic_fuzzy_delay=None, service_name=None,
                coordination=False, *args, **kwargs):
-        service_obj = super(TaskService, cls).create(
-            host=host, binary=binary, topic=topic, manager=manager,
+        return super(TaskService, cls).create(
+            host=host,
+            binary=binary,
+            topic=topic,
+            manager=manager,
             periodic_interval=periodic_interval,
             periodic_fuzzy_delay=periodic_fuzzy_delay,
             service_name=service_name,
-            coordination=coordination, *args, **kwargs)
-
-        return service_obj
+            coordination=coordination,
+            *args,
+            **kwargs
+        )
 
     def start(self):
         super(TaskService, self).start()
@@ -303,14 +315,14 @@ class LeaderElectionService(service.Service):
                     LOG.info("Starting leader election service")
                     self.leader_elector.run()
                 except Exception as e:
-                    LOG.error("Exception in leader election run [%s]" % e)
+                    LOG.error(f"Exception in leader election run [{e}]")
 
                 try:
                     # Cleanup and again start participating for leadership
                     LOG.info("Cleaning leader election residue")
                     self.leader_elector.cleanup()
                 except Exception as e:
-                    LOG.error("Exception in leader election cleanup [%s]" % e)
+                    LOG.error(f"Exception in leader election cleanup [{e}]")
 
                 # Wait for grace period
                 LOG.info(
@@ -331,9 +343,7 @@ class LeaderElectionService(service.Service):
         leader_elector = LeaderElectionFactory.construct_elector(
             CONF.leader_election_plugin)
 
-        service_obj = cls(leader_elector, *args, **kwargs)
-
-        return service_obj
+        return cls(leader_elector, *args, **kwargs)
 
     def kill(self):
         self.stop()
@@ -348,7 +358,7 @@ class LeaderElectionService(service.Service):
             if self.leader_elector:
                 self.leader_elector.cleanup()
         except Exception as e:
-            LOG.warning("Exception in leader election cleanup [%s]" % e)
+            LOG.warning(f"Exception in leader election cleanup [{e}]")
 
         # Reap thread group:
         self.tg.stop(graceful)
@@ -376,10 +386,10 @@ class WSGIService(service.ServiceBase):
         if not rpc.initialized():
             rpc.init(CONF)
         self.app = self.loader.load_app(name)
-        self.host = getattr(CONF, '%s_listen' % name, "0.0.0.0")
-        self.port = getattr(CONF, '%s_listen_port' % name, 0)
-        self.workers = getattr(CONF, '%s_workers' % name, None)
-        self.use_ssl = getattr(CONF, '%s_use_ssl' % name, False)
+        self.host = getattr(CONF, f'{name}_listen', "0.0.0.0")
+        self.port = getattr(CONF, f'{name}_listen_port', 0)
+        self.workers = getattr(CONF, f'{name}_workers', None)
+        self.use_ssl = getattr(CONF, f'{name}_use_ssl', False)
         if self.workers is not None and self.workers < 1:
             LOG.warning(
                 "Value of config option %(name)s_workers must be integer "
@@ -406,7 +416,7 @@ class WSGIService(service.ServiceBase):
         :returns: a Manager instance, or None.
 
         """
-        fl = '%s_manager' % self.name
+        fl = f'{self.name}_manager'
         if fl not in CONF:
             return None
 

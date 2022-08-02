@@ -41,20 +41,20 @@ class NetAppHandler(object):
     def get_table_data(values):
         header_index = 0
         table = values.split("\r\n")
-        for i in range(0, len(table)):
+        for i in range(len(table)):
             if constant.PATTERN.search(table[i]):
                 header_index = i
         return table[(header_index + 1):]
 
     @staticmethod
     def get_fs_id(vserver, volume):
-        return vserver + '_' + volume
+        return f'{vserver}_{volume}'
 
     @staticmethod
     def get_qt_id(vserver, volume, qtree):
-        qt_id = vserver + '/' + volume
+        qt_id = f'{vserver}/{volume}'
         if qtree != '':
-            qt_id += '/' + qtree
+            qt_id += f'/{qtree}'
         return qt_id
 
     def ssh_do_exec(self, command):
@@ -108,8 +108,7 @@ class NetAppHandler(object):
             if 'is not a recognized command' in result:
                 raise exception.InvalidIpOrPort()
         except Exception as e:
-            LOG.error("Failed to login netapp %s" %
-                      (six.text_type(e)))
+            LOG.error(f"Failed to login netapp {six.text_type(e)}")
             raise e
 
     def get_storage(self):
@@ -127,11 +126,15 @@ class NetAppHandler(object):
             Tools.split_value_map_list(
                 controller_info, controller_map_list, ":")
             version_array = version_info.split("\r\n")
-            storage_version = ''
-            for version in version_array:
-                if 'NetApp' in version:
-                    storage_version = version.split(":")
-                    break
+            storage_version = next(
+                (
+                    version.split(":")
+                    for version in version_array
+                    if 'NetApp' in version
+                ),
+                '',
+            )
+
             status = self.get_table_data(status_info)
             status = constant.STORAGE_STATUS.get(status[0].split()[0])
             disk_list = self.get_disks(None)
@@ -139,7 +142,7 @@ class NetAppHandler(object):
             storage_map_list = []
             Tools.split_value_map_list(
                 system_info, storage_map_list, split=':')
-            if len(storage_map_list) > 0:
+            if storage_map_list:
                 storage_map = storage_map_list[-1]
                 controller_map = controller_map_list[1]
                 for disk in disk_list:
@@ -148,7 +151,7 @@ class NetAppHandler(object):
                     total_capacity += pool['total_capacity']
                     free_capacity += pool['free_capacity']
                     used_capacity += pool['used_capacity']
-                storage_model = {
+                return {
                     "name": storage_map['ClusterName'],
                     "vendor": constant.STORAGE_VENDOR,
                     "model": controller_map['Model'],
@@ -159,17 +162,17 @@ class NetAppHandler(object):
                     "total_capacity": total_capacity,
                     "raw_capacity": raw_capacity,
                     "used_capacity": used_capacity,
-                    "free_capacity": free_capacity
+                    "free_capacity": free_capacity,
                 }
-                return storage_model
+
         except exception.DelfinException as e:
             err_msg = "Failed to get storage from " \
-                      "netapp cmode: %s" % (six.text_type(e.msg))
+                          "netapp cmode: %s" % (six.text_type(e.msg))
             LOG.error(err_msg)
             raise e
         except Exception as err:
             err_msg = "Failed to get storage from " \
-                      "netapp cmode: %s" % (six.text_type(err))
+                          "netapp cmode: %s" % (six.text_type(err))
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -254,13 +257,13 @@ class NetAppHandler(object):
                 if volume_map and 'LUNName' in volume_map.keys():
                     pool_id = None
                     status = 'normal' if volume_map['State'] == 'online' \
-                        else 'offline'
+                            else 'offline'
                     for fs in fs_list:
                         if fs['name'] == volume_map['VolumeName']:
                             pool_id = fs['native_pool_id']
                     type = constants.VolumeType.THIN \
-                        if volume_map['SpaceAllocation'] == 'enabled' \
-                        else constants.VolumeType.THICK
+                            if volume_map['SpaceAllocation'] == 'enabled' \
+                            else constants.VolumeType.THICK
                     volume_model = {
                         'name': volume_map['LUNName'],
                         'storage_id': storage_id,
@@ -284,12 +287,12 @@ class NetAppHandler(object):
             return volume_list
         except exception.DelfinException as e:
             err_msg = "Failed to get storage volume from " \
-                      "netapp cmode: %s" % (six.text_type(e))
+                          "netapp cmode: %s" % (six.text_type(e))
             LOG.error(err_msg)
             raise e
         except Exception as err:
             err_msg = "Failed to get storage volume from " \
-                      "netapp cmode: %s" % (six.text_type(err))
+                          "netapp cmode: %s" % (six.text_type(err))
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -306,7 +309,7 @@ class NetAppHandler(object):
                     alert_map['IndicationTime'],
                     constant.ALTER_TIME_TYPE)))
                 if not query_para or \
-                        (int(query_para['begin_time'])
+                            (int(query_para['begin_time'])
                          <= occur_time
                          <= int(query_para['end_time'])):
                     alert_model = {
@@ -333,16 +336,15 @@ class NetAppHandler(object):
     def list_alerts(self, query_para):
         try:
             """Query the two alarms separately"""
-            alert_list = self.get_alerts(query_para)
-            return alert_list
+            return self.get_alerts(query_para)
         except exception.DelfinException as e:
             err_msg = "Failed to get storage alert from " \
-                      "netapp cmode: %s" % (six.text_type(e))
+                          "netapp cmode: %s" % (six.text_type(e))
             LOG.error(err_msg)
             raise e
         except Exception as err:
             err_msg = "Failed to get storage alert from " \
-                      "netapp cmode: %s" % (six.text_type(err))
+                          "netapp cmode: %s" % (six.text_type(err))
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -364,7 +366,6 @@ class NetAppHandler(object):
 
     def get_disks(self, storage_id):
         disks_list = []
-        physicals_list = []
         disks_info = self.ssh_do_exec(
             constant.DISK_SHOW_DETAIL_COMMAND)
         physicals_info = self.ssh_do_exec(
@@ -380,22 +381,21 @@ class NetAppHandler(object):
                 error_disk_list.append(error_array[0])
         disks_map_list = []
         physical_array = self.get_table_data(physicals_info)
-        for physical in physical_array:
-            physicals_list.append(physical.split())
+        physicals_list = [physical.split() for physical in physical_array]
         Tools.split_value_map_list(disks_info, disks_map_list, split=':')
         for disks_map in disks_map_list:
             if disks_map and 'Disk' in disks_map.keys():
                 speed = physical_type = firmware = None
                 logical_type = constant.DISK_LOGICAL. \
-                    get(disks_map['ContainerType'])
+                        get(disks_map['ContainerType'])
                 """Map disk physical information"""
                 for physical_info in physicals_list:
                     if len(physical_info) > 6 and \
-                            physical_info[0] == disks_map['Disk']:
+                                physical_info[0] == disks_map['Disk']:
                         physical_type = \
-                            constant.DISK_TYPE.get(physical_info[1])
+                                constant.DISK_TYPE.get(physical_info[1])
                         speed = physical_info[5] \
-                            if physical_info[5] != '-' else 0
+                                if physical_info[5] != '-' else 0
                         firmware = physical_info[4]
                 status = constants.DiskStatus.NORMAL
                 if disks_map['Disk'] in error_disk_list:
@@ -443,12 +443,14 @@ class NetAppHandler(object):
                 if len(thin_fs_array) > 2:
                     for thin_vol in thin_fs_array:
                         thin_array = thin_vol.split()
-                        if len(thin_array) > 4:
-                            if thin_array[1] == fs_map['VolumeName']:
-                                type = constants.VolumeType.THIN
+                        if (
+                            len(thin_array) > 4
+                            and thin_array[1] == fs_map['VolumeName']
+                        ):
+                            type = constants.VolumeType.THIN
                 compressed = True
                 if fs_map['VolumeContainsSharedorCompressedData'] == \
-                        'false':
+                            'false':
                     compressed = False
                 status = constant.FS_STATUS.get(fs_map['VolumeState'])
                 fs_id = self.get_fs_id(
@@ -473,7 +475,7 @@ class NetAppHandler(object):
                     'free_capacity': self.get_size(fs_map['AvailableSize'])
                 }
                 if fs_model['total_capacity'] != '-' \
-                        and fs_model['total_capacity'] > 0:
+                            and fs_model['total_capacity'] > 0:
                     fs_list.append(fs_model)
         return fs_list
 
@@ -488,8 +490,8 @@ class NetAppHandler(object):
             for controller_map in controller_map_list:
                 if controller_map and 'Node' in controller_map.keys():
                     status = constants.ControllerStatus.NORMAL \
-                        if controller_map['Health'] == 'true' \
-                        else constants.ControllerStatus.OFFLINE
+                            if controller_map['Health'] == 'true' \
+                            else constants.ControllerStatus.OFFLINE
                     controller_model = {
                         'name': controller_map['Node'],
                         'storage_id': storage_id,
@@ -504,13 +506,13 @@ class NetAppHandler(object):
             return controller_list
         except exception.DelfinException as e:
             err_msg = "Failed to get storage controllers from " \
-                      "netapp cmode: %s" % (six.text_type(e))
+                          "netapp cmode: %s" % (six.text_type(e))
             LOG.error(err_msg)
             raise e
 
         except Exception as err:
             err_msg = "Failed to get storage controllers from " \
-                      "netapp cmode: %s" % (six.text_type(err))
+                          "netapp cmode: %s" % (six.text_type(err))
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -527,7 +529,7 @@ class NetAppHandler(object):
                     logical_type = constant.ETH_LOGICAL_TYPE.get(
                         eth_map['PortType'])
                     port_id = \
-                        eth_map['Node'] + '_' + eth_map['Port']
+                            eth_map['Node'] + '_' + eth_map['Port']
                     eth_model = {
                         'name': eth_map['Port'],
                         'storage_id': storage_id,
@@ -562,12 +564,12 @@ class NetAppHandler(object):
             return eth_list
         except exception.DelfinException as e:
             err_msg = "Failed to get storage ports from " \
-                      "netapp cmode: %s" % (six.text_type(e))
+                          "netapp cmode: %s" % (six.text_type(e))
             LOG.error(err_msg)
             raise e
         except Exception as err:
             err_msg = "Failed to get storage ports from " \
-                      "netapp cmode: %s" % (six.text_type(err))
+                          "netapp cmode: %s" % (six.text_type(err))
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -582,7 +584,7 @@ class NetAppHandler(object):
                 if fc_map and 'Node' in fc_map.keys():
                     type = constant.FC_TYPE.get(fc_map['PhysicalProtocol'])
                     port_id = \
-                        fc_map['Node'] + '_' + fc_map['Adapter']
+                            fc_map['Node'] + '_' + fc_map['Adapter']
                     fc_model = {
                         'name':
                             fc_map['Node'] +
@@ -618,21 +620,18 @@ class NetAppHandler(object):
             return fc_list
         except exception.DelfinException as e:
             err_msg = "Failed to get storage ports from " \
-                      "netapp cmode: %s" % (six.text_type(e))
+                          "netapp cmode: %s" % (six.text_type(e))
             LOG.error(err_msg)
             raise e
 
         except Exception as err:
             err_msg = "Failed to get storage ports from " \
-                      "netapp cmode: %s" % (six.text_type(err))
+                          "netapp cmode: %s" % (six.text_type(err))
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
     def list_ports(self, storage_id):
-        ports_list = \
-            self.get_fc_port(storage_id) + \
-            self.get_eth_port(storage_id)
-        return ports_list
+        return self.get_fc_port(storage_id) + self.get_eth_port(storage_id)
 
     def list_disks(self, storage_id):
         try:
@@ -664,15 +663,21 @@ class NetAppHandler(object):
                 if qt_map and 'QtreeName' in qt_map.keys():
                     fs_id = self.get_fs_id(qt_map['VserverName'],
                                            qt_map['VolumeName'])
-                    qtree_path = None
-                    for fs_map in fs_map_list:
-                        if fs_map and 'VserverName' in fs_map.keys() \
-                                and fs_id == self.get_fs_id(
-                                fs_map['VserverName'],
-                                fs_map['VolumeName']) \
-                                and fs_map['JunctionPath'] != '-':
-                            qtree_path = fs_map['JunctionPath']
-                            break
+                    qtree_path = next(
+                        (
+                            fs_map['JunctionPath']
+                            for fs_map in fs_map_list
+                            if fs_map
+                            and 'VserverName' in fs_map.keys()
+                            and fs_id
+                            == self.get_fs_id(
+                                fs_map['VserverName'], fs_map['VolumeName']
+                            )
+                            and fs_map['JunctionPath'] != '-'
+                        ),
+                        None,
+                    )
+
                     qt_id = self.get_qt_id(
                         qt_map['VserverName'],
                         qt_map['VolumeName'],
@@ -695,13 +700,13 @@ class NetAppHandler(object):
             return qt_list
         except exception.DelfinException as err:
             err_msg = "Failed to get storage qtrees from " \
-                      "netapp cmode: %s" % (six.text_type(err))
+                          "netapp cmode: %s" % (six.text_type(err))
             LOG.error(err_msg)
             raise err
 
         except Exception as err:
             err_msg = "Failed to get storage qtrees from " \
-                      "netapp cmode: %s" % (six.text_type(err))
+                          "netapp cmode: %s" % (six.text_type(err))
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -719,7 +724,7 @@ class NetAppHandler(object):
                         fs_id = self.get_fs_id(fs_map['VserverName'],
                                                fs_map['VolumeName'])
                         share_name = \
-                            fs_map['VserverName'] + '/' + fs_map['VolumeName']
+                                fs_map['VserverName'] + '/' + fs_map['VolumeName']
                         qt_id = self.get_qt_id(fs_map['VserverName'],
                                                fs_map['VolumeName'], '')
                         qtree_id = None
@@ -727,45 +732,46 @@ class NetAppHandler(object):
                             if qtree['native_qtree_id'] == qt_id:
                                 qtree_id = qt_id
                             if fs_id == qtree['native_filesystem_id']\
-                                    and qtree['name'] != ""\
-                                    and qtree['name'] != \
-                                    qtree['native_qtree_id']:
-                                qt_share_name = \
-                                    share_name + '/' + qtree['name']
+                                        and qtree['name'] != ""\
+                                        and qtree['name'] != \
+                                        qtree['native_qtree_id']:
+                                qt_share_name = f'{share_name}/' + qtree['name']
                                 share = {
                                     'name': qt_share_name,
                                     'storage_id': storage_id,
-                                    'native_share_id':
-                                        qt_share_name + '_' +
-                                        constants.ShareProtocol.NFS,
-                                    'native_qtree_id':
-                                        qtree['native_qtree_id'],
-                                    'native_filesystem_id':
-                                        qtree['native_filesystem_id'],
+                                    'native_share_id': (
+                                        f'{qt_share_name}_'
+                                        + constants.ShareProtocol.NFS
+                                    ),
+                                    'native_qtree_id': qtree['native_qtree_id'],
+                                    'native_filesystem_id': qtree[
+                                        'native_filesystem_id'
+                                    ],
                                     'path': qtree['path'],
-                                    'protocol': constants.ShareProtocol.NFS
+                                    'protocol': constants.ShareProtocol.NFS,
                                 }
+
                                 nfs_list.append(share)
                         share = {
                             'name': share_name,
                             'storage_id': storage_id,
-                            'native_share_id':
-                                share_name + '_' + constants.ShareProtocol.NFS,
+                            'native_share_id': f'{share_name}_{constants.ShareProtocol.NFS}',
                             'native_qtree_id': qtree_id,
                             'native_filesystem_id': fs_id,
                             'path': fs_map['JunctionPath'],
-                            'protocol': constants.ShareProtocol.NFS
+                            'protocol': constants.ShareProtocol.NFS,
                         }
+
                         nfs_list.append(share)
             return nfs_list
         except exception.DelfinException as err:
             err_msg = "Failed to get storage nfs share from " \
-                      "netapp cmode: %s" % (six.text_type(err))
+                          "netapp cmode: %s" % (six.text_type(err))
             LOG.error(err_msg)
             raise err
         except Exception as err:
             err_msg = "Failed to get storage nfs share from " \
-                      "netapp cmode: %s" % (six.text_type(err))
+                          "netapp cmode: %s" % (six.text_type(err))
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -779,24 +785,23 @@ class NetAppHandler(object):
         Tools.split_value_map_list(share_info, share_map_list, split=':')
         for share_map in share_map_list:
             if share_map and 'VolumeName' in share_map.keys() and \
-                    share_map['VolumeName'] != '-':
+                        share_map['VolumeName'] != '-':
                 protocol_str = protocol_map.get(
                     share_map['Vserver'])
                 fs_id = self.get_fs_id(share_map['Vserver'],
                                        share_map['VolumeName'])
-                share_id = fs_id + '_' + share_map['Share'] + '_'
+                share_id = f'{fs_id}_' + share_map['Share'] + '_'
                 qtree_id = None
                 for qtree in qtree_list:
                     name_array = share_map['Path'].split('/')
-                    if len(name_array) > 0:
-                        qtree_name = name_array[len(name_array) - 1]
-                        if qtree_name == share_map['VolumeName']:
-                            qtree_name = ''
-                        qt_id = self.get_qt_id(
-                            share_map['Vserver'],
-                            share_map['VolumeName'], qtree_name)
-                    else:
+                    if len(name_array) <= 0:
                         break
+                    qtree_name = name_array[len(name_array) - 1]
+                    if qtree_name == share_map['VolumeName']:
+                        qtree_name = ''
+                    qt_id = self.get_qt_id(
+                        share_map['Vserver'],
+                        share_map['VolumeName'], qtree_name)
                     if qtree['native_qtree_id'] == qt_id:
                         qtree_id = qt_id
                         break
@@ -839,28 +844,27 @@ class NetAppHandler(object):
             return shares_list
         except exception.DelfinException as err:
             err_msg = "Failed to get storage shares from " \
-                      "netapp cmode: %s" % (six.text_type(err))
+                          "netapp cmode: %s" % (six.text_type(err))
             LOG.error(err_msg)
             raise err
 
         except Exception as err:
             err_msg = "Failed to get storage shares from " \
-                      "netapp cmode: %s" % (six.text_type(err))
+                          "netapp cmode: %s" % (six.text_type(err))
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
     def list_filesystems(self, storage_id):
         try:
-            fs_list = self.get_filesystems(storage_id)
-            return fs_list
+            return self.get_filesystems(storage_id)
         except exception.DelfinException as e:
             err_msg = "Failed to get storage volume from " \
-                      "netapp cmode: %s" % (six.text_type(e))
+                          "netapp cmode: %s" % (six.text_type(e))
             LOG.error(err_msg)
             raise e
         except Exception as err:
             err_msg = "Failed to get storage volume from " \
-                      "netapp cmode: %s" % (six.text_type(err))
+                          "netapp cmode: %s" % (six.text_type(err))
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -875,11 +879,11 @@ class NetAppHandler(object):
                 user_group_name = None
                 if quota_map and 'VolumeName' in quota_map.keys():
                     quota_id = \
-                        quota_map['Vserver'] + '_' + \
-                        quota_map['VolumeName'] + '_' + \
-                        quota_map['Type'] + '_' + \
-                        quota_map['QtreeName'] + '_' + \
-                        quota_map['Target']
+                            quota_map['Vserver'] + '_' + \
+                            quota_map['VolumeName'] + '_' + \
+                            quota_map['Type'] + '_' + \
+                            quota_map['QtreeName'] + '_' + \
+                            quota_map['Target']
                     type = constant.QUOTA_TYPE.get(quota_map['Type'])
                     qt_id = self.get_qt_id(
                         quota_map['Vserver'],
@@ -887,8 +891,7 @@ class NetAppHandler(object):
                     if type == 'tree' and quota_map['Target'] != '':
                         qt_id += '/' + quota_map['Target']
                     else:
-                        if type == 'user' or 'group':
-                            user_group_name = quota_map['Target']
+                        user_group_name = quota_map['Target']
                         if quota_map['QtreeName'] != '':
                             qt_id += '/' + quota_map['QtreeName']
                     fs_id = self.get_fs_id(quota_map['Vserver'],
@@ -917,12 +920,12 @@ class NetAppHandler(object):
             return quota_list
         except exception.DelfinException as e:
             err_msg = "Failed to get storage volume from " \
-                      "netapp cmode: %s" % (six.text_type(e))
+                          "netapp cmode: %s" % (six.text_type(e))
             LOG.error(err_msg)
             raise e
         except Exception as err:
             err_msg = "Failed to get storage volume from " \
-                      "netapp cmode: %s" % (six.text_type(err))
+                          "netapp cmode: %s" % (six.text_type(err))
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)
 
@@ -941,11 +944,11 @@ class NetAppHandler(object):
             return ip_list
         except exception.DelfinException as e:
             err_msg = "Failed to get storage ip from " \
-                      "netapp cmode: %s" % (six.text_type(e))
+                          "netapp cmode: %s" % (six.text_type(e))
             LOG.error(err_msg)
             raise e
         except Exception as err:
             err_msg = "Failed to get storage ip from " \
-                      "netapp cmode: %s" % (six.text_type(err))
+                          "netapp cmode: %s" % (six.text_type(err))
             LOG.error(err_msg)
             raise exception.InvalidResults(err_msg)

@@ -74,7 +74,7 @@ class Tools(object):
         temp_key = ''
         for detail in detail_array:
             if detail:
-                string_info = detail.split(split + " ")
+                string_info = detail.split(f"{split} ")
                 key = string_info[0].replace(' ', '')
                 value = ''
                 if len(string_info) > 1:
